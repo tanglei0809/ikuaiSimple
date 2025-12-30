@@ -53,7 +53,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            jumploop/webssh
+            tanglei0809/ikuai_dst
             ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=latest
