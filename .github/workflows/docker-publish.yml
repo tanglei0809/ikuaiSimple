@@ -1,34 +1,34 @@
-name: Build and Push Docker Image
+name: Build Java8 JAR and Push Docker Image
 
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
-  workflow_dispatch: # 支持手动触发
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Push Docker image to multiple registries
     runs-on: ubuntu-latest
-
-    # 显式声明权限，遵循最小权限原则
     permissions:
-      packages: write    # 推送镜像到 GHCR
-      contents: read     # 读取源码
-      attestations: write # 写入构建证明
-      id-token: write    # OIDC 认证，用于签名
+      packages: write
+      contents: read
 
     steps:
-      # 1. 检出代码
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      # 2. 安装 QEMU (支持跨平台构建如 ARM64)
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      # 1. 设置 JDK 8 环境进行编译
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'        # 必须指定为 8，确保生成的 class 文件版本兼容
+          distribution: 'temurin'  # Temurin 是 OpenJDK 的高质量发行版
+          cache: 'maven'
 
-      # 3. 初始化 Buildx
+      # 2. 编译生成 JAR 包
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      # 3. 设置 Docker 环境
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -39,42 +39,27 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 5. 登录 GitHub Container Registry (GHCR)
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # 6. 生成元数据 (Tags & Labels)
-      - name: Extract metadata (tags, labels) for Docker
+      # 5. 提取镜像标签
+      - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: |
-            tanglei0809/ikuai_dst
-            ghcr.io/${{ github.repository }}
+          images: tanglei0809/ikuai_dst
           tags: |
             type=raw,value=latest
             type=sha,format=short
 
-      # 7. 构建并推送 (核心步骤)
-      - name: Build and push Docker images
-        id: push
+      # 6. 构建并推送
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
-          platforms: linux/amd64,linux/arm64
+          # 因为是 Java 8，通常只构建 amd64 即可
+          # 如果需要 arm64，请确保镜像源 openjdk:8-jre 支持该架构
+          platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-      # 8. 镜像签名与证明 (增强安全性)
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-name: ghcr.io/${{ github.repository }}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
