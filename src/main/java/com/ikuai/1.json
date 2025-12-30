@@ -1,0 +1,52 @@
+{
+  "func_name": "ipgroup",
+  "action": "add",
+  "param": {
+    "group_name": "测试添加",
+    "addr_pool": "43.254.88.0/22,43.254.92.0/22",
+    "type": 0,
+    "newRow": true,
+    "comment": ","
+  }
+}
+
+{"func_name":"ipgroup","action":"add","param":{"group_name":"国内ip10","addr_pool":"192.168.1.1/24","type":0,"newRow":true,"comment":""}}
+
+
+{
+  "lan_addr_int": 3232261122,
+  "id": 1,
+  "enabled": "yes",
+  "comment": "",
+  "interface": "wan1",
+  "src_addr": "国内ip1,国内ip2,国内ip3,国内ip4,国内ip5,国内ip6,国内ip7,国内ip8,国内ip9",
+  "lan_addr": "192.168.100.2",
+  "protocol": "tcp",
+  "wan_port": "40080",
+  "lan_port": "80"
+}
+
+{
+  "func_name": "dnat",
+  "action": "edit",
+  "param": {
+    "lan_addr": "192.168.100.2",
+    "protocol": "tcp",
+    "wan_port": "40080",
+    "lan_port": "80",
+    "lan_addr_int": 3232261122,
+    "id": 1,
+    "enabled": "yes",
+    "comment": "",
+    "interface": "wan1",
+    "src_addr": "国内ip1,国内ip2,国内ip3,国内ip4,国内ip5,国内ip6,国内ip7,国内ip8,国内ip9,国内ip11"
+  }
+}
+
+
+{"func_name":"dnat","action":"show","param":{"TYPE":"total,data","limit":"0,100","ORDER_BY":"","ORDER":""}}
+
+
+123
+321
+456

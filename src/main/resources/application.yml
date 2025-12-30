@@ -1,0 +1,6 @@
+
+# 服务端口
+server:
+  port: 8056
+#  tomcat:
+#    uri-encoding: UTF-8

@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态表单 - 路由器白名单IP管理</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome图标 -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 适配Referrer策略，解决动态地址跨域问题 -->
+    <meta name="referrer" content="origin">
+
+    <!-- 自定义Tailwind配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        success: '#10b981',
+                        error: '#ef4444',
+                        neutral: '#64748b'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .input-focus {
+                @apply focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all duration-200;
+            }
+
+            .btn-hover {
+                @apply hover:shadow-md hover:-translate-y-0.5 transition-all duration-300;
+            }
+
+            .form-field {
+                @apply w-full px-4 py-2 border border-gray-300 rounded-lg input-focus;
+            }
+
+            .form-group {
+                @apply flex flex-col space-y-2 mb-5;
+            }
+
+            .password-wrapper {
+                @apply relative;
+            }
+
+            .password-toggle {
+                @apply absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary cursor-pointer transition-colors duration-200;
+            }
+        }
+    </style>
+
+    <style>
+        /* 加载动画 */
+        .loader {
+            border-top-color: #2563eb;
+            animation: spinner 0.8s linear infinite;
+        }
+
+        @keyframes spinner {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* 防止表单提交时页面抖动 */
+        button:disabled {
+            cursor: not-allowed !important;
+        }
+
+        /* 数据加载提示 */
+        .echo-loading {
+            color: #2563eb;
+            font-size: 12px;
+            text-align: center;
+            padding: 8px 0;
+        }
+
+        /* 未配置提示 */
+        .no-echo-data {
+            color: #64748b;
+            font-size: 12px;
+            text-align: center;
+            padding: 8px 0;
+        }
+
+        /* 新增：IP段提示样式 */
+        .ip-tip {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: -8px;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 font-sans text-gray-800">
+<header class="bg-white shadow-sm py-4 px-6 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-xl font-bold flex items-center">
+            <i class="fa fa-cogs text-primary mr-2"></i>路由器白名单IP管理
+        </h1>
+    </div>
+</header>
+
+<!-- 主体布局 -->
+<main class="max-w-7xl mx-auto px-4 py-8 flex flex-col md:flex-row items-start gap-6">
+    <!-- 左侧使用说明面板 -->
+    <div class="md:w-64 shrink-0 bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-300 h-fit">
+        <h3 class="text-md font-semibold mb-4 pb-2 border-b border-gray-100 flex items-center">
+            <i class="fa fa-info-circle text-primary mr-2"></i>使用说明
+        </h3>
+        <ul class="text-sm text-gray-700 space-y-3">
+            <li class="flex items-start">
+                <span class="text-primary font-medium mr-2">1.</span>
+                <span>本功能是给爱快端口映射添加IP白名单,只允许公网映射端口被国内ip访问</span>
+            </li>
+            <li class="flex items-start">
+                <span class="text-primary font-medium mr-2">2.</span>
+                <span>默认每三天自动执行一次IP列表更新,请注意备份</span>
+            </li>
+            <li class="flex items-start">
+                <span class="text-primary font-medium mr-2">3.</span>
+                <span>获取的国内IP地址数据来源于ipdeny</span>
+            </li>
+            <li class="flex items-start">
+                <span class="text-primary font-medium mr-2">4.</span>
+                <span>目前仅支持ikuai</span>
+            </li>
+            <li class="flex items-start text-neutral">
+                <i class="fa fa-lightbulb-o mr-2 mt-0.5"></i>
+                <span>勾选立即执行后会立即覆盖原有配置，请注意爱快备份</span>
+            </li>
+            <li class="flex items-start text-neutral">
+                <i class="fa fa-clock-o mr-2 mt-0.5"></i>
+                <span>未勾选立即执行时，配置仅保存，系统每3天自动执行一次更新</span>
+            </li>
+            <li class="flex items-start text-neutral">
+                <i class="fa fa-globe mr-2 mt-0.5"></i>
+                <span>支持IP段格式（如192.168.1.0/24），一行一条或英文逗号分隔</span>
+            </li>
+            <li class="flex items-start text-neutral">
+                <i class="fa fa-globe mr-2 mt-0.5"></i>
+                <span>设备地址支持IP、域名+端口（如router.ikuai.com:8080）格式</span>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 右侧表单区域 -->
+    <div class="flex-1 max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-300">
+        <h2 class="text-lg font-semibold mb-6 pb-2 border-b border-gray-100">选择类型并提交数据</h2>
+
+        <!-- 核心表单 -->
+        <form id="dynamicForm" class="space-y-6">
+            <!-- 路由器类型选择 -->
+            <div class="form-group">
+                <label for="routerType" class="text-sm font-medium text-gray-700">
+                    路由器类型 <span class="text-error">*</span>
+                </label>
+                <select id="routerType" class="form-field" required>
+                    <option value="" disabled>请选择路由器类型</option>
+                    <option value="ikuai" selected>ikuai</option>
+                </select>
+                <p class="hidden text-error text-xs mt-1" id="errorRouterType">请选择路由器类型</p>
+            </div>
+
+            <!-- 动态输入区域 -->
+            <div id="formFields" class="border rounded-lg p-4 bg-gray-50 min-h-[200px]">
+                <!-- 自动渲染ikuai输入框 -->
+                <div class="echo-loading">
+                    <i class="fa fa-spinner fa-spin mr-1"></i> 加载历史配置中...
+                </div>
+            </div>
+
+            <!-- 是否立即执行选项 -->
+            <div class="form-group">
+                <label class="text-sm font-medium text-gray-700 flex items-center cursor-pointer">
+                    <input type="checkbox" id="isExecute"
+                           class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mr-2" checked>
+                    立即执行白名单操作
+                    <span class="text-neutral text-xs ml-2">(勾选后提交即执行，取消则仅保存配置，系统每3天自动更新一次)</span>
+                </label>
+            </div>
+
+            <!-- 提交/重置按钮 -->
+            <div class="flex gap-3">
+                <button type="submit" id="submitBtn"
+                        class="flex-1 bg-primary text-white font-medium py-2.5 px-6 rounded-lg btn-hover flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none">
+                    <i class="fa fa-paper-plane mr-2"></i>
+                    <span>提交</span>
+                    <div class="hidden ml-2 loader w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                </button>
+                <button type="reset"
+                        class="flex-1 bg-gray-100 text-gray-700 border border-gray-300 font-medium py-2.5 px-6 rounded-lg btn-hover flex items-center justify-center">
+                    <i class="fa fa-refresh mr-2"></i>
+                    <span>重置</span>
+                </button>
+            </div>
+
+            <!-- 结果提示 -->
+            <div id="result"
+                 class="hidden py-3 px-4 rounded-lg text-sm flex items-center transition-all duration-300"></div>
+        </form>
+    </div>
+</main>
+
+<script>
+    // 工具函数：防抖
+    const debounce = (fn, delay = 300) => {
+        let timer = null;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    };
+
+    // 核心配置 - 动态推导接口地址，适配任意前端访问地址
+    const getApiBaseUrl = () => {
+        // 优先从URL参数获取后端地址（如 ?apiHost=192.168.1.100），适配灵活部署
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiHost = urlParams.get('apiHost');
+        const apiPort = urlParams.get('apiPort') || '8056';
+
+        if (apiHost) {
+            // 手动指定后端地址（如 http://192.168.1.100:8056）
+            return `${window.location.protocol}//${apiHost}:${apiPort}`;
+        }
+
+        // 默认：基于当前页面的协议+域名+固定端口8056
+        return `${window.location.protocol}//${window.location.hostname}:${apiPort}`;
+    };
+
+    // 核心配置 - 抽离常量便于维护
+    const CONFIG = {
+        API_URL: `${getApiBaseUrl()}/api/ikuai/submitDynamicForm`,
+        ECHO_API_URL: `${getApiBaseUrl()}/api/ikuai/echo`, // echo接口地址
+        FORM_FIELDS: {
+            ikuai: [
+                {
+                    id: 'userName',
+                    label: '用户名',
+                    type: 'text',
+                    required: true,
+                    placeholder: '请输入ikuai用户名',
+                    errorMsg: '用户名不能为空'
+                },
+                {
+                    id: 'password',
+                    label: '密码',
+                    type: 'password',
+                    required: true,
+                    placeholder: '请输入ikuai密码（至少6位）',
+                    errorMsg: '密码不能为空（至少6位）',
+                    validator: v => v.length >= 6
+                },
+                {
+                    id: 'ikuaiIp',
+                    label: '设备地址',
+                    type: 'text',
+                    required: true,
+                    placeholder: '请输入ikuai设备地址（例如:192.168.1.1、router.ikuai.com或router.ikuai.com:8080）',
+                    errorMsg: '设备地址格式不正确（支持IP、域名、域名+端口）',
+                    // 优化验证器：支持IP、域名、域名+端口格式
+                    validator: v => {
+                        // 移除http/https前缀
+                        const cleanValue = v.replace(/^(http|https):\/\/|\/.*$/g, '').trim();
+                        if (!cleanValue) return false;
+
+                        // 拆分主机和端口（支持:端口后缀）
+                        const [host, port] = cleanValue.split(':');
+
+                        // 验证端口（如果有）
+                        if (port) {
+                            const portNum = parseInt(port, 10);
+                            if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+                                return false;
+                            }
+                        }
+
+                        // 验证主机部分（IP或域名）
+                        // IP正则
+                        const ipRegex = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
+                        // 域名正则（兼容字母、数字、短横线、多级域名）
+                        const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+                        return ipRegex.test(host) || domainRegex.test(host);
+                    }
+                },
+                {
+                    id: 'blockAddress',
+                    label: '允许访问IP列表',
+                    type: 'textarea',
+                    required: false,  // 非必填
+                    placeholder: '允许访问的IP地址，一行一条或英文逗号隔开（非必填,例如:127.0.0.1/24）',
+                    errorMsg: 'IP地址/IP段格式不正确',
+                    // 优化验证器：支持IP段（如192.168.1.0/24）
+                    validator: v => {
+                        // 空值直接通过验证
+                        if (!v) return true;
+                        // 有值时验证每个IP/IP段格式
+                        const ips = v.split(/[\n,]+/).map(ip => ip.trim()).filter(ip => ip);
+                        // 支持纯IP和IP段格式
+                        const ipWithCidrRegex = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\/([0-9]|[1-2][0-9]|3[0-2]))?$/;
+                        return ips.every(ip => {
+                            const cleanIp = ip.replace(/^(http|https):\/\/|\/.*$/g, '').trim();
+                            return ipWithCidrRegex.test(cleanIp);
+                        });
+                    }
+                }
+            ]
+        },
+        TIMEOUT: 15000, // 延长超时时间到15秒，适配网络波动
+        MESSAGE_DURATION: 6000 // 延长提示显示时间到6秒，确保用户看清
+    };
+
+    // DOM元素缓存 - 使用对象字面量更清晰
+    const elements = {
+        form: document.getElementById('dynamicForm'),
+        routerType: document.getElementById('routerType'),
+        formFields: document.getElementById('formFields'),
+        submitBtn: document.getElementById('submitBtn'),
+        result: document.getElementById('result'),
+        loader: document.querySelector('.loader'),
+        errorRouterType: document.getElementById('errorRouterType'),
+        isExecute: document.getElementById('isExecute')
+    };
+
+    /**
+     * 切换密码显示/隐藏状态
+     * @param {HTMLElement} toggleBtn - 切换按钮元素
+     */
+    const togglePasswordVisibility = (toggleBtn) => {
+        const passwordInput = toggleBtn.previousElementSibling;
+        if (!passwordInput) return;
+
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+
+        // 切换图标
+        if (type === 'text') {
+            toggleBtn.classList.remove('fa-eye');
+            toggleBtn.classList.add('fa-eye-slash');
+            toggleBtn.setAttribute('title', '隐藏密码');
+        } else {
+            toggleBtn.classList.remove('fa-eye-slash');
+            toggleBtn.classList.add('fa-eye');
+            toggleBtn.setAttribute('title', '显示密码');
+        }
+    };
+
+    /**
+     * 清理设备地址前缀（移除http/https，保留域名+端口）
+     * @param {string} address - 原始设备地址
+     * @returns {string} 清理后的地址
+     */
+    const cleanDeviceAddress = (address) => {
+        if (!address) return '';
+        // 只移除http/https前缀，保留域名+端口
+        return address.replace(/^(http|https):\/\//g, '').trim();
+    };
+
+    /**
+     * 显示结果提示
+     * @param {boolean} isSuccess - 是否成功
+     * @param {string} message - 提示信息
+     */
+    const showResult = (isSuccess, message) => {
+        elements.result.classList.remove('hidden');
+        elements.result.className = `py-3 px-4 rounded-lg text-sm flex items-center transition-all duration-300 ${
+            isSuccess ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
+        }`;
+        elements.result.innerHTML = `<i class="fa ${isSuccess ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+
+        // 使用clearTimeout防止多次触发
+        if (showResult.timer) clearTimeout(showResult.timer);
+        showResult.timer = setTimeout(() => elements.result.classList.add('hidden'), CONFIG.MESSAGE_DURATION);
+    };
+
+    /**
+     * 获取字段值（适配设备地址清理逻辑）
+     * @param {object} field - 字段配置
+     * @returns {string|number} 字段值
+     */
+    const getFieldValue = (field) => {
+        const el = document.getElementById(field.id);
+        if (!el) return '';
+
+        let value = el.value.trim();
+        // 对设备地址清理http/https前缀（保留域名+端口）
+        if (field.id === 'ikuaiIp') {
+            value = cleanDeviceAddress(value);
+        }
+        if (field.type === 'number') {
+            const num = Number(value);
+            return isNaN(num) ? '' : num;
+        }
+        return value;
+    };
+
+    /**
+     * 设置字段值（用于回显，避免XSS风险）
+     * @param {object} field - 字段配置
+     * @param {string} value - 要设置的值
+     */
+    const setFieldValue = (field, value) => {
+        const el = document.getElementById(field.id);
+        if (!el) return;
+        // 安全赋值，避免XSS
+        el.value = value || '';
+    };
+
+    /**
+     * 验证单个字段
+     * @param {object} field - 字段配置
+     * @returns {boolean} 验证结果
+     */
+    const validateField = (field) => {
+        const el = document.getElementById(field.id);
+        const errorEl = document.getElementById(`error-${field.id}`);
+        if (!el || !errorEl) return false;
+
+        const value = getFieldValue(field);
+        errorEl.classList.add('hidden');
+
+        // 必填项验证（仅当required为true时）
+        if (field.required && !value) {
+            errorEl.classList.remove('hidden');
+            return false;
+        }
+
+        // 自定义验证器：仅在有值时验证
+        if (field.validator && value && !field.validator(el.value)) { // 传入原始值用于验证
+            errorEl.classList.remove('hidden');
+            return false;
+        }
+
+        return true;
+    };
+
+    /**
+     * 渲染表单字段
+     * @param {string} type - 路由器类型
+     * @param {object} echoData - 回显数据（可选）
+     */
+    const renderFields = (type, echoData = {}) => {
+        if (!type) {
+            elements.formFields.innerHTML = '<p class="text-neutral text-sm text-center py-6">请先选择路由器类型</p>';
+            return;
+        }
+
+        const fields = CONFIG.FORM_FIELDS[type] || [];
+        let html = '';
+
+        fields.forEach(field => {
+            // 输入框/文本域模板
+            let inputHtml = '';
+
+            if (field.type === 'textarea') {
+                inputHtml = `
+                    <textarea id="${field.id}" class="form-field" placeholder="${field.placeholder}" rows="4"></textarea>
+                    <p class="ip-tip">支持格式：192.168.1.1 或 192.168.1.0/24，多行请换行</p>
+                `;
+            } else if (field.type === 'password') {
+                // 密码输入框添加显示/隐藏按钮
+                inputHtml = `
+                    <div class="password-wrapper">
+                        <input type="${field.type}" id="${field.id}" class="form-field pr-10" placeholder="${field.placeholder}">
+                        <i class="fa fa-eye password-toggle" title="显示密码" onclick="togglePasswordVisibility(this)"></i>
+                    </div>
+                `;
+            } else {
+                inputHtml = `<input type="${field.type}" id="${field.id}" class="form-field" placeholder="${field.placeholder}">`;
+            }
+
+            // 表单组模板
+            html += `
+                <div class="form-group">
+                    <label for="${field.id}" class="text-sm font-medium text-gray-700">
+                        ${field.label} ${field.required ? '<span class="text-error">*</span>' : ''}
+                    </label>
+                    ${inputHtml}
+                    <p class="hidden text-error text-xs mt-1" id="error-${field.id}">${field.errorMsg}</p>
+                </div>
+            `;
+        });
+
+        elements.formFields.innerHTML = html;
+
+        // 绑定验证事件
+        fields.forEach(field => {
+            const el = document.getElementById(field.id);
+            if (el) {
+                el.addEventListener('input', () => validateField(field));
+                el.addEventListener('blur', () => validateField(field));
+                // 设置回显值
+                setFieldValue(field, echoData[field.id] || '');
+            }
+        });
+
+        // 回显是否立即执行的勾选状态
+        if (echoData.isExecute !== undefined) {
+            elements.isExecute.checked = echoData.isExecute;
+        }
+    };
+
+    /**
+     * 解析ResponseEntity格式的响应数据
+     * @param {Response} response - fetch响应对象
+     * @returns {Promise<object>} 解析后的响应数据
+     */
+    const parseResponseEntity = async (response) => {
+        // 先获取响应文本（兼容非JSON格式）
+        const responseText = await response.text();
+        let data = {};
+
+        // 尝试解析JSON
+        try {
+            if (responseText) {
+                data = JSON.parse(responseText);
+            }
+        } catch (e) {
+            // 非JSON格式直接封装为错误数据
+            data = {
+                success: false,
+                message: `响应格式错误: ${responseText.substring(0, 100)}...`,
+                status: response.status
+            };
+        }
+
+        // 适配ResponseEntity的标准格式
+        const responseBody = data.body || data.result || data.data || data;
+
+        // 标准化响应格式
+        return {
+            success: responseBody.success ?? (response.status >= 200 && response.status < 300),
+            message: responseBody.message || responseBody.msg || (response.ok ? '操作成功' : `请求失败: ${response.status}`),
+            data: responseBody,
+            status: response.status
+        };
+    };
+
+    /**
+     * 调用echo接口获取历史数据并回显
+     * @param {string} routerType - 路由器类型
+     */
+    const fetchEchoData = async (routerType = 'ikuai') => {
+        // 显示加载状态
+        elements.formFields.innerHTML = `
+            <div class="echo-loading">
+                <i class="fa fa-spinner fa-spin mr-1"></i> 加载历史配置中...
+            </div>
+        `;
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
+
+            // 调用echo接口
+            const response = await fetch(`${CONFIG.ECHO_API_URL}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                signal: controller.signal,
+                credentials: 'include'
+            });
+
+            clearTimeout(timeoutId);
+
+            // 解析ResponseEntity格式响应
+            const parsedData = await parseResponseEntity(response);
+
+            // 处理响应结果
+            if (parsedData.success) {
+                // 有有效配置数据
+                renderFields(routerType, parsedData.data);
+                showResult(true, '已加载历史配置数据');
+            } else {
+                // 无配置数据
+                renderFields(routerType);
+                elements.formFields.insertAdjacentHTML('afterbegin', `
+                    <div class="no-echo-data mb-4">未初始化配置</div>
+                `);
+                showResult(true, '暂无配置数据，请先填写并提交');
+            }
+        } catch (err) {
+            // 处理网络错误/超时等异常
+            renderFields(routerType);
+            const errorMsg = err.name === 'AbortError' ? '请求超时，请检查网络' : `加载配置失败: ${err.message}`;
+            elements.formFields.insertAdjacentHTML('afterbegin', `
+                <div class="text-error text-xs text-center mb-4">
+                    <i class="fa fa-exclamation-circle mr-1"></i> ${errorMsg}
+                </div>
+            `);
+            showResult(false, errorMsg);
+            console.error('Echo接口调用失败：', err);
+        }
+    };
+
+    /**
+     * 处理表单提交
+     * @param {Event} e - 提交事件
+     */
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        let isValid = true;
+        const type = elements.routerType.value;
+        const isExecute = elements.isExecute.checked;
+
+        // 重置所有错误提示
+        document.querySelectorAll('[id^="error-"]').forEach(el => el.classList.add('hidden'));
+
+        // 验证路由器类型
+        if (!type) {
+            elements.errorRouterType.classList.remove('hidden');
+            isValid = false;
+        }
+
+        // 验证表单字段
+        if (isValid) {
+            const fields = CONFIG.FORM_FIELDS[type] || [];
+            fields.forEach(field => {
+                if (!validateField(field)) isValid = false;
+            });
+        }
+
+        // 验证失败处理
+        if (!isValid) {
+            const firstError = document.querySelector('[id^="error-"]:not(.hidden)');
+            if (firstError) {
+                firstError.scrollIntoView({behavior: 'smooth', block: 'center'});
+            }
+            return;
+        }
+
+        // 构建提交数据
+        const submitData = {
+            routerType: type,
+            isExecute: isExecute,
+            ...Object.fromEntries(
+                (CONFIG.FORM_FIELDS[type] || []).map(field => [field.id, getFieldValue(field)])
+            )
+        };
+
+        // 仅开发环境打印提交数据
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.log('提交数据：', submitData);
+        }
+
+        try {
+            // 提交状态处理
+            elements.submitBtn.disabled = true;
+            elements.submitBtn.querySelector('span').textContent = '提交中...';
+            elements.loader.classList.remove('hidden');
+            elements.result.classList.add('hidden');
+
+            // 调用API
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
+
+            const response = await fetch(CONFIG.API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(submitData),
+                signal: controller.signal,
+                credentials: 'include'
+            });
+
+            clearTimeout(timeoutId);
+
+            // 解析ResponseEntity格式响应
+            const parsedData = await parseResponseEntity(response);
+
+            // 显示结果
+            let successMsg = '';
+            if (parsedData.success) {
+                const baseMsg = parsedData.message || '操作成功';
+                if (isExecute) {
+                    successMsg = `${baseMsg}（已立即执行白名单更新）`;
+                } else {
+                    successMsg = `${baseMsg}（配置已保存，系统将每3天自动执行一次IP白名单更新）`;
+                }
+            } else {
+                successMsg = parsedData.message || `操作失败[${parsedData.status}]`;
+            }
+
+            showResult(parsedData.success, successMsg);
+
+            // 提交成功后重新拉取echo数据
+            if (parsedData.success) {
+                await fetchEchoData(type);
+            }
+
+        } catch (err) {
+            let errorMsg = '';
+            if (err.name === 'AbortError') {
+                errorMsg = '请求超时，请检查网络或服务器状态';
+            } else if (err.message.includes('Failed to fetch')) {
+                errorMsg = '接口访问失败，请检查后端服务是否启动或地址是否正确';
+            } else {
+                errorMsg = `提交失败：${err.message}`;
+            }
+            showResult(false, errorMsg);
+            // 仅开发环境打印错误详情
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.error('提交错误：', err);
+            }
+        } finally {
+            // 恢复按钮状态
+            elements.submitBtn.disabled = false;
+            elements.submitBtn.querySelector('span').textContent = '提交';
+            elements.loader.classList.add('hidden');
+        }
+    };
+
+    /**
+     * 处理表单重置
+     */
+    const handleReset = (e) => {
+        e.preventDefault();
+        elements.result.classList.add('hidden');
+        elements.errorRouterType.classList.add('hidden');
+        elements.routerType.value = 'ikuai';
+
+        // 重置后重新拉取echo数据
+        fetchEchoData('ikuai');
+    };
+
+    /**
+     * 初始化函数
+     */
+    const init = () => {
+        // 初始加载echo数据
+        fetchEchoData(elements.routerType.value);
+
+        // 绑定事件
+        elements.routerType.addEventListener('change', (e) => {
+            fetchEchoData(e.target.value);
+        });
+        elements.form.addEventListener('submit', handleSubmit);
+        elements.form.addEventListener('reset', handleReset);
+
+        // 窗口大小变化防抖
+        window.addEventListener('resize', debounce(() => {
+            fetchEchoData(elements.routerType.value);
+        }, 500));
+
+        // 挂载密码切换函数
+        window.togglePasswordVisibility = togglePasswordVisibility;
+
+        // 开发环境调试信息
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.log('表单初始化完成，当前接口地址：', CONFIG.API_URL);
+        }
+    };
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

@@ -1,24 +1,67 @@
-# Compiled class file
-*.class
+# Vue、React build output
+dist/
+build/
+node_modules/
 
-# Log file
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.flattened-pom.xml
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+.mvn
+.gitattributes
+
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+/upload
+# Logs
+logs
 *.log
 
-# BlueJ files
-*.ctxt
+# OS Specific Files
+.DS_Store
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+# Editor Directories and Files
+.vscode/
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
+# Dependency Directories
+node_modules
+dist-ssr
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+# Lock Files
+package-lock.json
+yarn.lock
+
+# Local Environment Files
+*.local
+ikuai.json
+
+HELP.md
+mvnw
+mvnw.cmd
