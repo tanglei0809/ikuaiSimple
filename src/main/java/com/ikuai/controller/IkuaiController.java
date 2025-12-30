@@ -74,20 +74,20 @@ public class IkuaiController {
 
 
     public static void main(String[] args) {
-//        IkuaiParam ikuaiParam = new IkuaiParam();
-//        ikuaiParam.setPassword("password");
-//        IkuaiParam ikuaiParam1 = new IkuaiParam();
-//        ikuaiParam1.setPassword("password1");
-//
-//        System.out.println(Optional.ofNullable(ikuaiParam.getIkuaiIp()));
-//        List<IkuaiParam> list = Arrays.asList(ikuaiParam, ikuaiParam1);
-//        HashSet<IkuaiParam> set = new HashSet<>(list);
-//        set.add(ikuaiParam);
-//        set.add(ikuaiParam1);
-//
-//
-//        ArrayList<IkuaiParam> distinct = CollectionUtil.distinct(list);
-//        System.out.println(distinct);
+        IkuaiParam ikuaiParam = new IkuaiParam();
+        ikuaiParam.setPassword("password");
+        IkuaiParam ikuaiParam1 = new IkuaiParam();
+        ikuaiParam1.setPassword("password1");
+
+        System.out.println(Optional.ofNullable(ikuaiParam.getIkuaiIp()));
+        List<IkuaiParam> list = Arrays.asList(ikuaiParam, ikuaiParam1);
+        HashSet<IkuaiParam> set = new HashSet<>(list);
+        set.add(ikuaiParam);
+        set.add(ikuaiParam1);
+
+
+        ArrayList<IkuaiParam> distinct = CollectionUtil.distinct(list);
+        System.out.println(distinct);
 
 
     }
