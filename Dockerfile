@@ -1,5 +1,5 @@
 #penjdk:8-jre 为基础镜像，来构建此镜像，可以理解为运行的需要基础环境还可以用 java:8
-FROM openjdk:8-jre
+FROM eclipse-temurin:8-jre-alpine
 #WORKDIR指令用于指定容器的一个目录， 容器启动时执行的命令会在该目录下执行(jar包容器内路径)。
 WORKDIR /root/ikuai/
 #将当前metabase.jar 复制到容器根目录下
