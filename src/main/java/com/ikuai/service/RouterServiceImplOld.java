@@ -264,7 +264,7 @@ public class RouterServiceImplOld {
             // 使用 Hutool 的 FileUtil.writeUtf8String 方法写入字符串到文件
 
             String addIp = "";
-            if (StringUtils.isNotEmpty(param.getBlockAddress())) {
+            if (CollectionUtil.isNotEmpty(param.getBlockAddress())) {
                 addIp = "," + param.getBlockAddress();
             }
             //写入文件

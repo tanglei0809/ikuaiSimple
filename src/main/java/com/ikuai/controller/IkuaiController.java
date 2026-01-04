@@ -8,6 +8,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.ObjectUtil;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.ikuai.entity.IkuaiParam;
 import com.ikuai.result.Result;
@@ -39,15 +40,6 @@ public class IkuaiController {
             param.setIkuaiIp("http://" + param.getIkuaiIp());
         }
 
-        if (StringUtils.isNotEmpty(param.getBlockAddress())) {
-            String blockAddress = param.getBlockAddress();
-            if (blockAddress.contains(",") || blockAddress.contains("，")) {
-                param.setBlockAddress(blockAddress.replaceAll("，", ","));
-            } else if (blockAddress.contains("\n")) {
-                String[] split = blockAddress.split("\n");
-                param.setBlockAddress(String.join(",", split));
-            }
-        }
         String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
         String jsonString = JSON.toJSONString(param);
         FileUtil.writeUtf8String(jsonString, projectPath);
@@ -65,10 +57,16 @@ public class IkuaiController {
         try {
             s = FileUtil.readUtf8String(System.getProperty("user.dir") + File.separator + "ikuai.json");
         } catch (IORuntimeException e) {
-            s = JSON.toJSONString(new IkuaiParam());
+            IkuaiParam ikuaiParam = new IkuaiParam();
+            ikuaiParam.setGetIpUrls(Arrays.asList("https://www.ipdeny.com/ipblocks/data/countries/cn.zone", "https://metowolf.github.io/iplist/data/special/china.txt"));
+            s = JSON.toJSONString(ikuaiParam);
             FileUtil.writeUtf8String(s, System.getProperty("user.dir") + File.separator + "ikuai.json");
         }
         JSONObject jsonObject = JSON.parseObject(s);
+        JSONArray jsonArray = jsonObject.getJSONArray("getIpUrls");
+        if (CollectionUtil.isEmpty(jsonArray)) {
+            jsonObject.put("getIpUrls", Arrays.asList("https://www.ipdeny.com/ipblocks/data/countries/cn.zone", "https://metowolf.github.io/iplist/data/special/china.txt"));
+        }
         return Result.ok(jsonObject);
     }
 

@@ -149,11 +149,15 @@
             </li>
             <li class="flex items-start text-neutral">
                 <i class="fa fa-globe mr-2 mt-0.5"></i>
-                <span>支持IP段格式（如192.168.1.0/24），一行一条或英文逗号分隔</span>
+                <span>支持IP段格式（如192.168.1.0/24），每行一条数据</span>
             </li>
             <li class="flex items-start text-neutral">
                 <i class="fa fa-globe mr-2 mt-0.5"></i>
                 <span>设备地址支持IP、域名+端口（如router.ikuai.com:8080）格式</span>
+            </li>
+            <li class="flex items-start text-neutral">
+                <i class="fa fa-link mr-2 mt-0.5"></i>
+                <span>URL地址支持http/https开头，每行一条</span>
             </li>
         </ul>
     </div>
@@ -303,20 +307,38 @@
                     label: '允许访问IP列表',
                     type: 'textarea',
                     required: false,  // 非必填
-                    placeholder: '允许访问的IP地址，一行一条或英文逗号隔开（非必填,例如:127.0.0.1/24）',
+                    placeholder: '允许访问的IP地址，每行一条（非必填,例如:127.0.0.1/24）',
                     errorMsg: 'IP地址/IP段格式不正确',
                     // 优化验证器：支持IP段（如192.168.1.0/24）
                     validator: v => {
                         // 空值直接通过验证
                         if (!v) return true;
-                        // 有值时验证每个IP/IP段格式
-                        const ips = v.split(/[\n,]+/).map(ip => ip.trim()).filter(ip => ip);
+                        // 有值时验证每个IP/IP段格式（仅按换行符分割，每行一条）
+                        const ips = v.split('\n').map(ip => ip.trim()).filter(ip => ip);
                         // 支持纯IP和IP段格式
                         const ipWithCidrRegex = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\/([0-9]|[1-2][0-9]|3[0-2]))?$/;
                         return ips.every(ip => {
                             const cleanIp = ip.replace(/^(http|https):\/\/|\/.*$/g, '').trim();
                             return ipWithCidrRegex.test(cleanIp);
                         });
+                    }
+                },
+                {
+                    id: 'getIpUrls',
+                    label: '获取国内ip地址url',
+                    type: 'textarea',
+                    required: false,  // 非必填
+                    placeholder: '获取国内ip地址url，每行一条（非必填,例如:https://example.com）',
+                    errorMsg: 'URL格式不正确',
+                    // 验证器：支持URL格式
+                    validator: v => {
+                        // 空值直接通过验证
+                        if (!v) return true;
+                        // 有值时验证每个URL格式（仅按换行符分割，每行一条）
+                        const urls = v.split('\n').map(url => url.trim()).filter(url => url);
+                        // 支持URL格式（http/https开头）
+                        const urlRegex = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
+                        return urls.every(url => urlRegex.test(url));
                     }
                 }
             ]
@@ -470,7 +492,7 @@
             if (field.type === 'textarea') {
                 inputHtml = `
                     <textarea id="${field.id}" class="form-field" placeholder="${field.placeholder}" rows="4"></textarea>
-                    <p class="ip-tip">支持格式：192.168.1.1 或 192.168.1.0/24，多行请换行</p>
+                    <p class="ip-tip">支持格式：${field.id === 'getIpUrls' ? 'https://example.com' : '192.168.1.1 或 192.168.1.0/24'}，每行一条数据</p>
                 `;
             } else if (field.type === 'password') {
                 // 密码输入框添加显示/隐藏按钮
@@ -584,7 +606,102 @@
             const parsedData = await parseResponseEntity(response);
 
             // 处理响应结果
-            if (parsedData.success) {
+            if (parsedData.success && parsedData.data) {
+                // 处理IP地址列表格式标准化（支持字符串和数组两种格式）
+                if (parsedData.data.blockAddress) {
+                    let ips = parsedData.data.blockAddress;
+                    console.log('原始IP配置数据:', ips);
+
+                    let extractedIps = [];
+
+                    // 处理数组格式
+                    if (Array.isArray(ips)) {
+                        console.log('检测到数组格式的IP数据');
+                        extractedIps = ips.map(ip => ip.trim()).filter(ip => ip.length > 0);
+                    }
+                    // 处理字符串格式
+                    else if (typeof ips === 'string') {
+                        console.log('检测到字符串格式的IP数据');
+
+                        // 处理逗号分隔的IP地址
+                        if (ips.includes(',')) {
+                            console.log('检测到逗号分隔的IP地址，进行格式转换');
+                            extractedIps = ips.split(',')
+                                .map(ip => ip.trim())
+                                .filter(ip => ip.length > 0);
+                        } else {
+                            // 按换行符分割
+                            extractedIps = ips.split('\n')
+                                .map(ip => ip.trim())
+                                .filter(ip => ip.length > 0);
+                        }
+                    }
+
+                    // 去重处理
+                    const uniqueIps = [...new Set(extractedIps)];
+                    console.log('去重后的IP列表:', uniqueIps);
+
+                    // 确保最终格式为每行一条（字符串格式用于页面显示）
+                    const finalIps = uniqueIps.join('\n');
+                    parsedData.data.blockAddress = finalIps;
+                    console.log('最终标准化后的IP配置数据:', finalIps);
+                }
+
+                // 处理URL列表格式标准化（支持字符串和数组两种格式）
+                if (parsedData.data.getIpUrls) {
+                    let urls = parsedData.data.getIpUrls;
+                    console.log('原始URL配置数据:', urls);
+
+                    let extractedUrls = [];
+
+                    // 处理数组格式
+                    if (Array.isArray(urls)) {
+                        console.log('检测到数组格式的URL数据');
+                        extractedUrls = urls.map(url => url.trim()).filter(url => url.length > 0);
+                    }
+                    // 处理字符串格式
+                    else if (typeof urls === 'string') {
+                        console.log('检测到字符串格式的URL数据');
+
+                        // 第一步：使用正则表达式提取所有有效的URL
+                        const urlPattern = /https?:\/\/[^\s,]+/g;
+                        const regexMatches = urls.match(urlPattern) || [];
+                        console.log('正则提取到的URL列表:', regexMatches);
+
+                        if (regexMatches.length > 0) {
+                            extractedUrls = regexMatches;
+                        } else {
+                            // 第二步：如果没有提取到URL但原字符串不为空，尝试其他分割方式
+                            if (urls.trim().length > 0) {
+                                console.log('使用正则提取失败，尝试按逗号分割');
+                                // 按逗号分割并清理
+                                const splitUrls = urls.split(',')
+                                    .map(url => url.trim())
+                                    .filter(url => url.length > 0 && url.includes('http'));
+                                extractedUrls = splitUrls;
+                                console.log('按逗号分割后的URL列表:', splitUrls);
+                            }
+                        }
+
+                        // 第三步：如果仍然没有URL，尝试直接使用原字符串
+                        if (extractedUrls.length === 0 && urls.trim().length > 0) {
+                            console.log('分割失败，尝试直接使用原字符串作为URL');
+                            if (urls.trim().includes('http')) {
+                                extractedUrls.push(urls.trim());
+                            }
+                        }
+                    }
+
+                    // 第四步：去重处理
+                    const uniqueUrls = [...new Set(extractedUrls)];
+                    console.log('去重后的URL列表:', uniqueUrls);
+
+                    // 第五步：确保最终格式为每行一条（字符串格式用于页面显示）
+                    const finalUrls = uniqueUrls.join('\n');
+                    parsedData.data.getIpUrls = finalUrls;
+                    console.log('最终标准化后的URL配置数据:', finalUrls);
+                }
+
                 // 有有效配置数据
                 renderFields(routerType, parsedData.data);
                 showResult(true, '已加载历史配置数据');
@@ -651,7 +768,42 @@
             routerType: type,
             isExecute: isExecute,
             ...Object.fromEntries(
-                (CONFIG.FORM_FIELDS[type] || []).map(field => [field.id, getFieldValue(field)])
+                (CONFIG.FORM_FIELDS[type] || []).map(field => {
+                    const value = getFieldValue(field);
+                    // 特殊处理IP地址列表和URL列表
+                    if ((field.id === 'blockAddress' || field.id === 'getIpUrls') && value) {
+                        // 清理空行和首尾空格，确保每行一条
+                        let cleanedItems = value.split('\n')
+                            .map(item => item.trim())
+                            .filter(item => item.length > 0);
+
+                        // 检查是否有项目中包含逗号，如果有则分割处理
+                        const itemsWithCommas = cleanedItems.filter(item => item.includes(','));
+                        if (itemsWithCommas.length > 0) {
+                            // 处理包含逗号的项目
+                            const expandedItems = [];
+                            cleanedItems.forEach(item => {
+                                if (item.includes(',')) {
+                                    // 分割并清理每个项目
+                                    item.split(',').forEach(splitItem => {
+                                        const trimmed = splitItem.trim();
+                                        if (trimmed.length > 0) {
+                                            expandedItems.push(trimmed);
+                                        }
+                                    });
+                                } else {
+                                    expandedItems.push(item);
+                                }
+                            });
+                            cleanedItems = expandedItems;
+                        }
+
+                        // 对IP地址列表和URL列表都转换为数组格式以匹配后端API要求
+                        console.log(`${field.id === 'blockAddress' ? 'IP' : 'URL'}配置转换为数组格式:`, cleanedItems);
+                        return [field.id, cleanedItems]; // 返回数组格式
+                    }
+                    return [field.id, value];
+                })
             )
         };
 

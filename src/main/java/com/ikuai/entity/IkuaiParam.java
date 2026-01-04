@@ -3,6 +3,8 @@ package com.ikuai.entity;
 
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * @description:
  * @author: TangLei
@@ -24,10 +26,11 @@ public class IkuaiParam {
     private String userName;
 
     //"自定添加ip")
-    private String blockAddress;
+    private List<String> blockAddress;
 
     //"更新类型")
     private String updateType;
 
-
+    //"请求获取ip的地址集合")
+    private List<String> getIpUrls;
 }

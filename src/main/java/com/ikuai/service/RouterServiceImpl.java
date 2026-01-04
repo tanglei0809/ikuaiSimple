@@ -4,6 +4,8 @@ package com.ikuai.service;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
@@ -96,17 +98,20 @@ public class RouterServiceImpl implements RouterService {
                         }
                         addGroupIp.addAll(jsonObjectList);
                     }
-
-                    List<String> ids = data.stream().map(item -> {
-                        JSONObject itemObject = (JSONObject) item;
-                        return itemObject.getString("id");
-                    }).collect(Collectors.toList());
-                    //清除旧的配置
-                    String delParamSource = "{\"func_name\":\"ipgroup\",\"action\":\"del\",\"param\":{\"id\":\"%s\"}}\n";
-                    String delParam = String.format(delParamSource, String.join(",", ids));
-                    String delPost = HttpUtil.post(param.getIkuaiIp() + "/Action/call", delParam);
                 }
+                //生成国内ip配置
                 List<JSONObject> jsonObjects = genertatorChinaIp(param);
+                if (CollectionUtil.isEmpty(jsonObjects)) {
+                    //清除旧的配置
+//                    List<String> ids = data.stream().map(item -> {
+//                        JSONObject itemObject = (JSONObject) item;
+//                        return itemObject.getString("id");
+//                    }).collect(Collectors.toList());
+//                    String delParamSource = "{\"func_name\":\"ipgroup\",\"action\":\"del\",\"param\":{\"id\":\"%s\"}}\n";
+//                    String delParam = String.format(delParamSource, String.join(",", ids));
+//                    String delPost = HttpUtil.post(param.getIkuaiIp() + "/Action/call", delParam);
+                }
+
                 addGroupIp.addAll(jsonObjects);
                 List<String> groupName = addGroupIp.stream().map(item -> item.getJSONObject("param").getString("group_name")).collect(Collectors.toList());
                 for (JSONObject object : addGroupIp) {
@@ -155,8 +160,55 @@ public class RouterServiceImpl implements RouterService {
                 }
             }
         }
-        log.info("=================更新结束===============" );
+        log.info("=================更新结束===============");
         return "更新成功";
+    }
+
+    public static void main(String[] args) throws Exception {
+        getChinaIp();
+
+    }
+
+    /**
+     * 读取本地(方便新增)获取ip的列表来生国内ip
+     *
+     * @return
+     * @throws Exception
+     */
+    public static List<String> getChinaIp() throws Exception {
+        String urlString = "https://www.ipdeny.com/ipblocks/data/countries/cn.zone";
+        String urlString2 = "https://metowolf.github.io/iplist/data/special/china.txt";
+        List<String> urlList;
+
+        //读取写入本地的配置
+        String projectPath = System.getProperty("user.dir") + File.separator + "getip.txt";
+        boolean exist = FileUtil.exist(projectPath);
+        if (exist) {
+            String s = FileUtil.readUtf8String(projectPath);
+            String[] lines2 = s.split("\n");
+            urlList = Arrays.asList(lines2);
+        } else {
+            List<String> lines = new ArrayList<>();
+            lines.add(urlString);
+            lines.add(urlString2);
+            urlList = lines;
+            FileUtil.appendUtf8Lines(lines, projectPath);
+        }
+        StringBuilder stringBuilder = new StringBuilder();
+        for (String url : urlList) {
+            // 使用 Hutool HttpUtil 获取内容
+            HttpResponse response = HttpRequest.get(url).execute();
+            if (!response.isOk()) {
+                continue;
+            }
+            String content = response.body();
+            stringBuilder.append(content);
+        }
+        if (StringUtils.isEmpty(stringBuilder.toString())) {
+            throw new Exception("获取ip失败");
+        }
+        String[] split = stringBuilder.toString().split("\n");
+        return Arrays.stream(split).distinct().collect(Collectors.toList());
     }
 
 
@@ -166,27 +218,23 @@ public class RouterServiceImpl implements RouterService {
      * @param
      */
     public List<JSONObject> genertatorChinaIp(IkuaiParam param) {
-        String urlString = "https://www.ipdeny.com/ipblocks/data/countries/cn.zone";
         int linesPerBatch = 980; // 每批次 980 行
         List<JSONObject> jsonObjectList = new ArrayList<>();
         try {
-            // 使用 Hutool HttpUtil 获取内容
-            String content = HttpUtil.get(urlString);
-            // 按行分割内容
-            String[] lines = content.split("\n");
-            int length = lines.length;
+
+            List<String> chinaIps = getChinaIp();
+            int length = chinaIps.size();
             // 处理每 980 行数据并拼接
             List<String> currentBatch = new ArrayList<>();
             int nameIndex = 1;
-            for (int i = 0; i < lines.length; i++) {
+            for (int i = 0; i < length; i++) {
                 // 将当前行添加到当前批次
-                currentBatch.add(lines[i]);
-
+                currentBatch.add(chinaIps.get(i));
                 if (currentBatch.size() == linesPerBatch || i == length - 1) {
                     String addIp = "";
                     if (i == length - 1) {
-                        if (StringUtils.isNotEmpty(param.getBlockAddress())) {
-                            addIp = "," + param.getBlockAddress();
+                        if (CollectionUtil.isNotEmpty(param.getBlockAddress())) {
+                            addIp = "," + String.join(",", param.getBlockAddress());
                         }
                     }
                     String addrName = "国内ip-" + DateUtil.format(new Date(), "yyyyMMdd") + "-" + nameIndex;
