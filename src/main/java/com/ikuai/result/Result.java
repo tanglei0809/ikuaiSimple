@@ -31,6 +31,11 @@ public class Result<T> {
     public static <T> ResponseEntity<Result<T>> fail(HttpStatus status, String msg) {
         return out(status, msg, null);
     }
+    // 快捷方法：失败 (自定义状态码)
+    public static <T> ResponseEntity<Result<T>> fail(String msg) {
+        return out(HttpStatus.INTERNAL_SERVER_ERROR, msg, null);
+    }
+
 
     // Getter 必须有，Jackson 才能转 JSON
     public int getCode() { return code; }

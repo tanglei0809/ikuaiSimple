@@ -7,6 +7,7 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.extra.servlet.ServletUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
@@ -16,9 +17,14 @@ import com.ikuai.service.RouterService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletResponse;
 import java.io.File;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -34,13 +40,17 @@ public class IkuaiController {
     @Resource
     RouterService routerService;
 
+    // 支持的文件扩展名
+    private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("json");
+
+    private static final String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
+
     @PostMapping("/submitDynamicForm")
     public ResponseEntity submitDynamicForm(@RequestBody IkuaiParam param) {
         if (!param.getIkuaiIp().contains("http")) {
             param.setIkuaiIp("http://" + param.getIkuaiIp());
         }
 
-        String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
         String jsonString = JSON.toJSONString(param);
         FileUtil.writeUtf8String(jsonString, projectPath);
         //是否立即执行
@@ -55,12 +65,12 @@ public class IkuaiController {
     public ResponseEntity echo() {
         String s = null;
         try {
-            s = FileUtil.readUtf8String(System.getProperty("user.dir") + File.separator + "ikuai.json");
+            s = FileUtil.readUtf8String(projectPath);
         } catch (IORuntimeException e) {
             IkuaiParam ikuaiParam = new IkuaiParam();
             ikuaiParam.setGetIpUrls(Arrays.asList("https://www.ipdeny.com/ipblocks/data/countries/cn.zone", "https://metowolf.github.io/iplist/data/special/china.txt"));
             s = JSON.toJSONString(ikuaiParam);
-            FileUtil.writeUtf8String(s, System.getProperty("user.dir") + File.separator + "ikuai.json");
+            FileUtil.writeUtf8String(s, projectPath);
         }
         JSONObject jsonObject = JSON.parseObject(s);
         JSONArray jsonArray = jsonObject.getJSONArray("getIpUrls");
@@ -70,6 +80,77 @@ public class IkuaiController {
         return Result.ok(jsonObject);
     }
 
+    @PostMapping("/upload")
+    public ResponseEntity upload(@RequestParam("file") MultipartFile file) throws IOException {
+
+        try {
+            // 验证文件
+            if (file == null || file.isEmpty()) {
+                return Result.fail("请选择要上传的文件");
+            }
+
+            // 验证文件扩展名
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) {
+                return Result.fail("文件名不能为空");
+            }
+
+            String extension = getFileExtension(originalFilename).toLowerCase();
+            if (!ALLOWED_EXTENSIONS.contains(extension)) {
+                return Result.fail("只支持 .json 和 .txt 文件格式");
+            }
+
+            // 验证文件大小（限制10MB）
+            if (file.getSize() > 10 * 1024 * 1024) {
+                return Result.fail("文件大小不能超过10MB");
+            }
+
+            // 保存文件
+            FileUtil.writeBytes(file.getBytes(), projectPath);
+
+        } catch (Exception e) {
+            return Result.fail("文件上传失败：" + e.getMessage());
+        }
+        return Result.ok("上传成功");
+    }
+
+
+    @GetMapping("/download")
+    public void download(HttpServletResponse response) {
+        File file = FileUtil.file(projectPath);
+        // 设置响应头，指定下载时的文件名（解决中文乱码问题）
+        response.setHeader("Content-Disposition", "attachment;filename=" + "ikuai.json");
+        response.setContentType("application/octet-stream");
+        // 写入响应
+        ServletUtil.write(response, file);
+    }
+
+    /**
+     * 获取文件扩展名
+     *
+     * @param filename 文件名
+     * @return 扩展名
+     */
+    private String getFileExtension(String filename) {
+        int lastDotIndex = filename.lastIndexOf('.');
+        if (lastDotIndex > 0 && lastDotIndex < filename.length() - 1) {
+            return filename.substring(lastDotIndex + 1);
+        }
+        return "";
+    }
+
+    /**
+     * 生成唯一的文件名
+     *
+     * @param originalFilename 原始文件名
+     * @return 唯一文件名
+     */
+    private String generateFilename(String originalFilename) {
+        String extension = getFileExtension(originalFilename);
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String uuid = UUID.randomUUID().toString().substring(0, 8);
+        return "config_" + timestamp + "_" + uuid + "." + extension;
+    }
 
     public static void main(String[] args) {
         IkuaiParam ikuaiParam = new IkuaiParam();
