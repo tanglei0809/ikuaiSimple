@@ -181,12 +181,13 @@ public class RouterServiceImpl implements RouterService {
         List<String> urlList;
 
         //读取写入本地的配置
-        String projectPath = System.getProperty("user.dir") + File.separator + "getip.txt";
+        String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
         boolean exist = FileUtil.exist(projectPath);
         if (exist) {
             String s = FileUtil.readUtf8String(projectPath);
-            String[] lines2 = s.split("\n");
-            urlList = Arrays.asList(lines2);
+            IkuaiParam ikuaiParam = JSONObject.parseObject(s, IkuaiParam.class);
+            List<String> getIpUrls = ikuaiParam.getGetIpUrls();
+            urlList = getIpUrls;
         } else {
             List<String> lines = new ArrayList<>();
             lines.add(urlString);
@@ -208,7 +209,7 @@ public class RouterServiceImpl implements RouterService {
             throw new Exception("获取ip失败");
         }
         String[] split = stringBuilder.toString().split("\n");
-        return Arrays.stream(split).distinct().collect(Collectors.toList());
+        return Arrays.stream(split).distinct().sorted().collect(Collectors.toList());
     }
 
 

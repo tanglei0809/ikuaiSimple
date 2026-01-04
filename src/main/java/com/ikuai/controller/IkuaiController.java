@@ -139,19 +139,6 @@ public class IkuaiController {
         return "";
     }
 
-    /**
-     * 生成唯一的文件名
-     *
-     * @param originalFilename 原始文件名
-     * @return 唯一文件名
-     */
-    private String generateFilename(String originalFilename) {
-        String extension = getFileExtension(originalFilename);
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        String uuid = UUID.randomUUID().toString().substring(0, 8);
-        return "config_" + timestamp + "_" + uuid + "." + extension;
-    }
-
     public static void main(String[] args) {
         IkuaiParam ikuaiParam = new IkuaiParam();
         ikuaiParam.setPassword("password");
