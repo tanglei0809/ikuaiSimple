@@ -36,6 +36,24 @@ public class RouterServiceImpl implements RouterService {
         return updateLogic(param);
     }
 
+    @Override
+    public Object getDstNatList(IkuaiParam param) {
+        boolean b = loginIkuai(param);
+        if (!b) {
+            return "登录失败";
+        }
+        //获取端口映射列表
+        String dnat = HttpUtil.post(param.getIkuaiIp() + "/Action/call", "{\"func_name\":\"dnat\",\"action\":\"show\",\"param\":{\"TYPE\":\"total,data\",\"limit\":\"0,100\",\"ORDER_BY\":\"\",\"ORDER\":\"\"}}");
+        JSONObject jsonObject2 = JSON.parseObject(dnat);
+        Integer result1 = jsonObject2.getInteger("Result");
+        String errMsg1 = jsonObject2.getString("ErrMsg");
+        if (result1 == 30000 && errMsg1.equals("Success")) {
+            return jsonObject2.getJSONObject("Data").getJSONArray("data");
+        }
+
+        return null;
+    }
+
     @Scheduled(cron = "0 0 0 */3 * ?")
     public void taskUpdate() {
         //读取写入本地的配置
@@ -127,10 +145,15 @@ public class RouterServiceImpl implements RouterService {
                 Integer result1 = jsonObject2.getInteger("Result");
                 String errMsg1 = jsonObject2.getString("ErrMsg");
                 if (result1 == 30000 && errMsg1.equals("Success")) {
-                    JSONArray data1 = jsonObject2.getJSONObject("Data").getJSONArray("data");
-                    if (CollectionUtil.isNotEmpty(data1)) {
-                        for (int i = 0; i < data1.size(); i++) {
-                            JSONObject jsonObject3 = data1.getJSONObject(i);
+                    JSONArray dataArray = jsonObject2.getJSONObject("Data").getJSONArray("data");
+                    if (CollectionUtil.isNotEmpty(dataArray)) {
+                        List<JSONObject> dstNatList = dataArray.toJavaList(JSONObject.class);
+                        if (CollectionUtil.isNotEmpty(param.getDstNatIds())){
+                            //筛选是否选择了端口映射列表
+                            dstNatList = dstNatList.stream().filter(item -> param.getDstNatIds().contains(item.getString("id"))).collect(Collectors.toList());
+                        }
+                        for (int i = 0; i < dstNatList.size(); i++) {
+                            JSONObject jsonObject3 = dataArray.getJSONObject(i);
                             String join = String.join(",", groupName);
                             String src_addr = jsonObject3.getString("src_addr");
                             if (StringUtils.isNotEmpty(src_addr)) {

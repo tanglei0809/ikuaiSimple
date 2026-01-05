@@ -5,4 +5,6 @@ import com.ikuai.entity.IkuaiParam;
 public interface RouterService {
 
     Object submitDynamicForm(IkuaiParam param);
+
+    Object getDstNatList(IkuaiParam param);
 }

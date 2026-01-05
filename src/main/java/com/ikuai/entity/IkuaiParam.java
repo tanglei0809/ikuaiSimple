@@ -33,4 +33,10 @@ public class IkuaiParam {
 
     //"请求获取ip的地址集合")
     private List<String> getIpUrls;
+
+    //"请求获取ip的地址集合")
+    private List<String> dstNatIds;
+
+
+
 }

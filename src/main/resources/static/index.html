@@ -104,6 +104,123 @@
             color: #64748b;
             margin-top: -8px;
         }
+
+        /* 新增：端口映射列表样式 */
+        .dst-nat-list {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .dst-nat-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .dst-nat-item:hover {
+            background-color: #f9fafb;
+        }
+
+        .dst-nat-item:last-child {
+            border-bottom: none;
+        }
+
+        .dst-nat-checkbox {
+            margin-right: 0.75rem;
+        }
+
+        .dst-nat-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dst-nat-lan-addr {
+            color: #6b7280;
+            font-size: 0.875rem;
+            white-space: nowrap;
+        }
+
+        .dst-nat-src-addr {
+            color: #059669;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+            border-bottom: 1px dotted #059669;
+            cursor: help;
+        }
+
+        .dst-nat-details {
+            font-size: 0.875rem;
+            color: #6b7280;
+            white-space: nowrap;
+        }
+
+        /* Tooltip样式 - 修复无法超出列表框的问题 */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            /* 确保tooltip容器不会被裁剪 */
+            overflow: visible !important;
+        }
+
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: center;
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            position: fixed; /* 使用fixed定位避免被父元素裁剪 */
+            z-index: 9999; /* 提高层级确保显示在最上层 */
+            bottom: auto;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+            max-width: 400px;
+            word-wrap: break-word;
+            white-space: normal;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .dst-nat-summary {
+            background-color: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 0.375rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dst-nat-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 0.375rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gray-50 font-sans text-gray-800">
@@ -173,6 +290,10 @@
                 <i class="fa fa-link mr-2 mt-0.5"></i>
                 <span>URL地址支持http/https开头，每行一条</span>
             </li>
+            <li class="flex items-start text-neutral">
+                <i class="fa fa-list-alt mr-2 mt-0.5"></i>
+                <span>可通过"获取端口映射列表"按钮获取并选择需要配置的端口映射规则</span>
+            </li>
         </ul>
     </div>
 
@@ -202,6 +323,58 @@
                 </div>
             </div>
 
+            <!-- 端口映射列表区域 -->
+            <div id="dstNatListSection" class="hidden border rounded-lg p-4 bg-gray-50">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-md font-semibold">端口映射列表</h3>
+                    <button type="button" id="getDstNatListBtn"
+                            class="bg-primary text-white font-medium py-1.5 px-3 rounded-lg btn-hover flex items-center justify-center text-sm disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none">
+                        <i class="fa fa-refresh mr-1"></i>
+                        <span>获取列表</span>
+                        <div class="hidden ml-1 loader w-3 h-3 border-2 border-white border-t-transparent rounded-full"></div>
+                    </button>
+                </div>
+
+                <!-- 端口映射列表容器 -->
+                <div id="dstNatListContainer" class="hidden">
+                    <!-- 选中数量统计 -->
+                    <div id="dstNatSummary" class="dst-nat-summary hidden">
+                        <div>
+                            <span>已选择 <span id="selectedCount">0</span> 项</span>
+                            <p class="text-xs text-gray-500 mt-1">提示：选中则只执行选中的数据，默认不选执行所有</p>
+                        </div>
+                        <div class="dst-nat-actions">
+                            <button type="button" id="toggleSelectAllBtn" class="btn-small bg-primary text-white">
+                                <i class="fa fa-check-square-o"></i>
+                                <span>全选</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 分组列表 -->
+                    <div id="dstNatGroups" class="space-y-2">
+                        <!-- 动态生成的分组内容 -->
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div id="dstNatLoading" class="echo-loading hidden">
+                        <i class="fa fa-spinner fa-spin mr-1"></i> 获取端口映射列表中...
+                    </div>
+
+                    <!-- 空状态 -->
+                    <div id="dstNatEmpty" class="text-center py-8 text-gray-500 hidden">
+                        <i class="fa fa-inbox fa-3x mb-2"></i>
+                        <p>暂无端口映射规则</p>
+                    </div>
+
+                    <!-- 错误状态 -->
+                    <div id="dstNatError" class="text-center py-8 text-error hidden">
+                        <i class="fa fa-exclamation-circle fa-3x mb-2"></i>
+                        <p id="dstNatErrorMessage">获取端口映射列表失败</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- 是否立即执行选项 -->
             <div class="form-group">
                 <label class="text-sm font-medium text-gray-700 flex items-center cursor-pointer">
@@ -226,8 +399,6 @@
                     <span>重置</span>
                 </button>
             </div>
-
-
 
             <!-- 隐藏的文件输入框 -->
             <input type="file" id="fileInput" accept=".json,.txt" class="hidden">
@@ -269,6 +440,9 @@
     const CONFIG = {
         API_URL: `${getApiBaseUrl()}/api/ikuai/submitDynamicForm`,
         ECHO_API_URL: `${getApiBaseUrl()}/api/ikuai/echo`, // echo接口地址
+        DST_NAT_LIST_API_URL: `${getApiBaseUrl()}/api/ikuai/getDstNatList`, // 新增：获取端口映射列表接口
+        UPLOAD_API_URL: `${getApiBaseUrl()}/api/ikuai/upload`, // 新增：上传配置接口
+        DOWNLOAD_API_URL: `${getApiBaseUrl()}/api/ikuai/download`, // 新增：下载配置接口
         FORM_FIELDS: {
             ikuai: [
                 {
@@ -378,8 +552,25 @@
         result: document.getElementById('result'),
         loader: document.querySelector('.loader'),
         errorRouterType: document.getElementById('errorRouterType'),
-        isExecute: document.getElementById('isExecute')
+        isExecute: document.getElementById('isExecute'),
+        // 新增：端口映射相关元素
+        dstNatListSection: document.getElementById('dstNatListSection'),
+        getDstNatListBtn: document.getElementById('getDstNatListBtn'),
+        dstNatListContainer: document.getElementById('dstNatListContainer'),
+        dstNatSummary: document.getElementById('dstNatSummary'),
+        selectedCount: document.getElementById('selectedCount'),
+        toggleSelectAllBtn: document.getElementById('toggleSelectAllBtn'),
+        dstNatGroups: document.getElementById('dstNatGroups'),
+        dstNatLoading: document.getElementById('dstNatLoading'),
+        dstNatEmpty: document.getElementById('dstNatEmpty'),
+        dstNatError: document.getElementById('dstNatError'),
+        dstNatErrorMessage: document.getElementById('dstNatErrorMessage')
     };
+
+    // 存储已选中的端口映射ID
+    let selectedDstNatIds = new Set();
+    // 存储所有端口映射数据
+    let dstNatData = [];
 
     /**
      * 切换密码显示/隐藏状态
@@ -556,6 +747,35 @@
         // 回显是否立即执行的勾选状态
         if (echoData.isExecute !== undefined) {
             elements.isExecute.checked = echoData.isExecute;
+        }
+
+        // 检查是否已填写必要信息，如果是则显示端口映射列表区域
+        checkAndShowDstNatSection();
+    };
+
+    /**
+     * 检查是否已填写必要信息，如果是则显示端口映射列表区域
+     */
+    const checkAndShowDstNatSection = () => {
+        const type = elements.routerType.value;
+        if (!type) return;
+
+        const fields = CONFIG.FORM_FIELDS[type] || [];
+        const requiredFields = fields.filter(field => field.required);
+
+        // 检查所有必填字段是否已填写
+        const allRequiredFilled = requiredFields.every(field => {
+            const el = document.getElementById(field.id);
+            return el && el.value.trim() !== '';
+        });
+
+        // 如果所有必填字段都已填写，显示端口映射列表区域
+        if (allRequiredFilled) {
+            elements.dstNatListSection.classList.remove('hidden');
+        } else {
+            elements.dstNatListSection.classList.add('hidden');
+            // 隐藏列表容器
+            elements.dstNatListContainer.classList.add('hidden');
         }
     };
 
@@ -750,6 +970,202 @@
     };
 
     /**
+     * 获取端口映射列表
+     */
+    const fetchDstNatList = async () => {
+        // 验证必要字段
+        const type = elements.routerType.value;
+        const fields = CONFIG.FORM_FIELDS[type] || [];
+        const requiredFields = fields.filter(field => field.required);
+
+        let isValid = true;
+        requiredFields.forEach(field => {
+            if (!validateField(field)) isValid = false;
+        });
+
+        if (!isValid) {
+            showResult(false, '请先填写并验证所有必填字段');
+            const firstError = document.querySelector('[id^="error-"]:not(.hidden)');
+            if (firstError) {
+                firstError.scrollIntoView({behavior: 'smooth', block: 'center'});
+            }
+            return;
+        }
+
+        // 显示加载状态
+        elements.dstNatListContainer.classList.remove('hidden');
+        elements.dstNatLoading.classList.remove('hidden');
+        elements.dstNatSummary.classList.add('hidden');
+        elements.dstNatGroups.innerHTML = '';
+        elements.dstNatEmpty.classList.add('hidden');
+        elements.dstNatError.classList.add('hidden');
+
+        // 禁用获取按钮
+        elements.getDstNatListBtn.disabled = true;
+        elements.getDstNatListBtn.querySelector('span').textContent = '获取中...';
+        elements.getDstNatListBtn.querySelector('.loader').classList.remove('hidden');
+
+        try {
+            // 构建请求数据
+            const requestData = {
+                routerType: type,
+                ...Object.fromEntries(
+                    requiredFields.map(field => [field.id, getFieldValue(field)])
+                )
+            };
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
+
+            // 调用API
+            const response = await fetch(CONFIG.DST_NAT_LIST_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestData),
+                signal: controller.signal,
+                credentials: 'include'
+            });
+
+            clearTimeout(timeoutId);
+
+            // 解析ResponseEntity格式响应
+            const parsedData = await parseResponseEntity(response);
+
+            // 隐藏加载状态
+            elements.dstNatLoading.classList.add('hidden');
+
+            if (parsedData.success && parsedData.data) {
+                // 存储端口映射数据
+                dstNatData = Array.isArray(parsedData.data) ? parsedData.data : [];
+                console.log('获取到的端口映射数据:', dstNatData);
+
+                if (dstNatData.length === 0) {
+                    // 显示空状态
+                    elements.dstNatEmpty.classList.remove('hidden');
+                    showResult(true, '未找到端口映射规则');
+                } else {
+                    // 直接渲染所有数据，不进行分组
+                    renderDstNatGroups(dstNatData);
+                    showResult(true, `成功获取到 ${dstNatData.length} 条端口映射规则`);
+                }
+            } else {
+                // 显示错误状态
+                elements.dstNatError.classList.remove('hidden');
+                elements.dstNatErrorMessage.textContent = parsedData.message || '获取端口映射列表失败';
+                showResult(false, parsedData.message || '获取端口映射列表失败');
+            }
+        } catch (err) {
+            // 处理网络错误/超时等异常
+            elements.dstNatLoading.classList.add('hidden');
+            elements.dstNatError.classList.remove('hidden');
+
+            let errorMsg = '';
+            if (err.name === 'AbortError') {
+                errorMsg = '请求超时，请检查网络';
+            } else if (err.message.includes('Failed to fetch')) {
+                errorMsg = '接口访问失败，请检查后端服务是否启动或地址是否正确';
+            } else {
+                errorMsg = `获取失败：${err.message}`;
+            }
+
+            elements.dstNatErrorMessage.textContent = errorMsg;
+            showResult(false, errorMsg);
+            console.error('获取端口映射列表失败：', err);
+        } finally {
+            // 恢复按钮状态
+            elements.getDstNatListBtn.disabled = false;
+            elements.getDstNatListBtn.querySelector('span').textContent = '获取列表';
+            elements.getDstNatListBtn.querySelector('.loader').classList.add('hidden');
+        }
+    };
+
+
+
+    /**
+     * 渲染端口映射列表
+     * @param {Array} items - 端口映射数据数组
+     */
+    const renderDstNatGroups = (items) => {
+        elements.dstNatGroups.innerHTML = '';
+
+        // 显示汇总信息
+        elements.dstNatSummary.classList.remove('hidden');
+        updateSelectedCount();
+
+        // 创建列表容器
+        const listElement = document.createElement('div');
+        listElement.className = 'dst-nat-list';
+
+        // 添加每个端口映射项
+        items.forEach(item => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'dst-nat-item';
+            itemElement.dataset.id = item.id;
+
+
+
+            // 构建src_addr显示内容，限制显示40个字符
+            const srcAddrContent = item.src_addr ?
+                `<div class="tooltip">
+                    <span class="dst-nat-src-addr">${item.src_addr.length > 40 ? item.src_addr.substring(0, 40) + '...' : item.src_addr}</span>
+                    <span class="tooltip-text">${item.src_addr}</span>
+                </div>` :
+                '<span class="text-gray-400 text-sm">无限制</span>';
+
+            // lan_addr字段保持完整显示
+            const lanAddrContent = item.lan_addr ?
+                `<span class="dst-nat-lan-addr">${item.lan_addr}</span>` :
+                '<span class="text-gray-400 text-sm">未知地址</span>';
+
+            itemElement.innerHTML = `
+                <input type="checkbox" class="dst-nat-checkbox" id="dst-nat-${item.id}" value="${item.id}">
+                <div class="dst-nat-info">
+                    ${lanAddrContent}
+                    <span class="mx-2 text-gray-400">→</span>
+                    ${srcAddrContent}
+                </div>
+            `;
+
+            listElement.appendChild(itemElement);
+        });
+
+        elements.dstNatGroups.appendChild(listElement);
+
+        // 绑定复选框事件
+        bindDstNatCheckboxEvents();
+    };
+
+    /**
+     * 绑定端口映射复选框事件
+     */
+    const bindDstNatCheckboxEvents = () => {
+        // 为所有复选框绑定change事件
+        document.querySelectorAll('.dst-nat-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const id = e.target.value;
+                if (e.target.checked) {
+                    selectedDstNatIds.add(id);
+                } else {
+                    selectedDstNatIds.delete(id);
+                }
+                updateSelectedCount();
+            });
+        });
+    };
+
+
+
+    /**
+     * 更新选中数量显示
+     */
+    const updateSelectedCount = () => {
+        elements.selectedCount.textContent = selectedDstNatIds.size;
+    };
+
+    /**
      * 处理表单提交
      * @param {Event} e - 提交事件
      */
@@ -789,6 +1205,7 @@
         const submitData = {
             routerType: type,
             isExecute: isExecute,
+            dstNatIds: Array.from(selectedDstNatIds), // 新增：选中的端口映射ID集合
             ...Object.fromEntries(
                 (CONFIG.FORM_FIELDS[type] || []).map(field => {
                     const value = getFieldValue(field);
@@ -912,6 +1329,13 @@
         elements.errorRouterType.classList.add('hidden');
         elements.routerType.value = 'ikuai';
 
+        // 清空选中的端口映射ID
+        selectedDstNatIds.clear();
+
+        // 隐藏端口映射列表区域
+        elements.dstNatListSection.classList.add('hidden');
+        elements.dstNatListContainer.classList.add('hidden');
+
         // 重置后重新拉取echo数据
         fetchEchoData('ikuai');
     };
@@ -949,7 +1373,7 @@
             const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
 
             // 调用上传API
-            const response = await fetch(`${getApiBaseUrl()}/api/ikuai/upload`, {
+            const response = await fetch(CONFIG.UPLOAD_API_URL, {
                 method: 'POST',
                 body: formData,
                 signal: controller.signal,
@@ -1001,7 +1425,7 @@
             const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
 
             // 调用下载API
-            const response = await fetch(`${getApiBaseUrl()}/api/ikuai/download`, {
+            const response = await fetch(CONFIG.DOWNLOAD_API_URL, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -1058,6 +1482,36 @@
     };
 
     /**
+     * 切换全选/取消全选端口映射
+     */
+    const toggleSelectAllDstNat = () => {
+        const allCheckboxes = document.querySelectorAll('.dst-nat-checkbox');
+        const isAllSelected = Array.from(allCheckboxes).every(checkbox => checkbox.checked);
+
+        if (isAllSelected) {
+            // 当前是全选状态，切换为取消全选
+            allCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            selectedDstNatIds.clear();
+            // 更新按钮状态
+            elements.toggleSelectAllBtn.querySelector('i').className = 'fa fa-square-o';
+            elements.toggleSelectAllBtn.querySelector('span').textContent = '全选';
+        } else {
+            // 当前不是全选状态，切换为全选
+            allCheckboxes.forEach(checkbox => {
+                checkbox.checked = true;
+                selectedDstNatIds.add(checkbox.value);
+            });
+            // 更新按钮状态
+            elements.toggleSelectAllBtn.querySelector('i').className = 'fa fa-check-square-o';
+            elements.toggleSelectAllBtn.querySelector('span').textContent = '取消全选';
+        }
+
+        updateSelectedCount();
+    };
+
+    /**
      * 初始化函数
      */
     const init = () => {
@@ -1075,6 +1529,17 @@
         elements.uploadBtn.addEventListener('click', handleUpload);
         elements.downloadBtn.addEventListener('click', handleDownload);
         elements.fileInput.addEventListener('change', handleFileSelect);
+
+        // 新增：绑定端口映射相关事件
+        elements.getDstNatListBtn.addEventListener('click', fetchDstNatList);
+        elements.toggleSelectAllBtn.addEventListener('click', toggleSelectAllDstNat);
+
+        // 监听表单字段变化，检查是否显示端口映射列表区域
+        document.addEventListener('input', debounce((e) => {
+            if (e.target.form === elements.form) {
+                checkAndShowDstNatSection();
+            }
+        }, 300));
 
         // 窗口大小变化防抖
         window.addEventListener('resize', debounce(() => {

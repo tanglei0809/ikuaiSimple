@@ -45,6 +45,14 @@ public class IkuaiController {
 
     private static final String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
 
+    @PostMapping("/getDstNatList")
+    public ResponseEntity getDstNatList(@RequestBody IkuaiParam param) {
+        if (!param.getIkuaiIp().contains("http")) {
+            param.setIkuaiIp("http://" + param.getIkuaiIp());
+        }
+            return ResponseEntity.ok(routerService.getDstNatList(param));
+    }
+
     @PostMapping("/submitDynamicForm")
     public ResponseEntity submitDynamicForm(@RequestBody IkuaiParam param) {
         if (!param.getIkuaiIp().contains("http")) {
@@ -60,6 +68,9 @@ public class IkuaiController {
 
         return Result.ok(param);
     }
+
+
+
 
     @GetMapping("/echo")
     public ResponseEntity echo() {
