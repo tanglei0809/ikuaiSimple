@@ -48,13 +48,39 @@ public class RouterServiceImpl implements RouterService {
         Integer result1 = jsonObject2.getInteger("Result");
         String errMsg1 = jsonObject2.getString("ErrMsg");
         if (result1 == 30000 && errMsg1.equals("Success")) {
-            return jsonObject2.getJSONObject("Data").getJSONArray("data");
-        }
+            JSONArray dstNatListArray = jsonObject2.getJSONObject("Data").getJSONArray("data");
+            //请求分组列表
+            if (CollectionUtil.isNotEmpty(dstNatListArray)) {
+                String ipGroupListParam = "{\"func_name\":\"ipgroup\",\"action\":\"show\",\"param\":{\"TYPE\":\"total,data\",\"limit\":\"0,100\",\"ORDER_BY\":\"\",\"ORDER\":\"\"}}";
+                String ipGroupListPost = HttpUtil.post(param.getIkuaiIp() + "/Action/call", ipGroupListParam);
+                if (StringUtils.isNotEmpty(ipGroupListPost)) {
+                    JSONObject jsonObject = JSON.parseObject(ipGroupListPost);
+                    Integer result = jsonObject.getInteger("Result");
+                    String errMsg = jsonObject.getString("ErrMsg");
+                    if (result == 30000 && errMsg.equals("Success")) {
+                        JSONArray data = jsonObject.getJSONObject("Data").getJSONArray("data");
+                        if (CollectionUtil.isNotEmpty(data)) {
+                            List<String> groupNameAll = data.toJavaList(JSONObject.class).stream().map(item -> item.getString("group_name")).collect(Collectors.toList());
+                            for (int i = 0; i < dstNatListArray.size(); i++) {
+                                JSONObject dstNat = dstNatListArray.getJSONObject(i);
+                                dstNat.put("groupNameAll", groupNameAll);
+                                String src_addr = dstNat.getString("src_addr");
+                                if (StringUtils.isNotEmpty(src_addr)){
+                                    dstNat.put("groupNameChoose", src_addr.split( ","));
+                                }
+                            }
+                        }
 
+
+                    }
+                }
+            }
+            return dstNatListArray;
+        }
         return null;
     }
 
-    @Scheduled(cron = "0 0 0 */3 * ?")
+    @Scheduled(cron = "0 0 3 */3 * ?")
     public void taskUpdate() {
         //读取写入本地的配置
         String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
@@ -120,18 +146,21 @@ public class RouterServiceImpl implements RouterService {
                 //生成国内ip配置
                 List<JSONObject> jsonObjects = genertatorChinaIp(param);
                 if (CollectionUtil.isEmpty(jsonObjects)) {
-                    //清除旧的配置
-//                    List<String> ids = data.stream().map(item -> {
-//                        JSONObject itemObject = (JSONObject) item;
-//                        return itemObject.getString("id");
-//                    }).collect(Collectors.toList());
-//                    String delParamSource = "{\"func_name\":\"ipgroup\",\"action\":\"del\",\"param\":{\"id\":\"%s\"}}\n";
-//                    String delParam = String.format(delParamSource, String.join(",", ids));
-//                    String delPost = HttpUtil.post(param.getIkuaiIp() + "/Action/call", delParam);
+                    if (param.isDeleteFlag()) {
+                        //清除旧的配置
+                        List<String> ids = data.stream().map(item -> {
+                            JSONObject itemObject = (JSONObject) item;
+                            return itemObject.getString("id");
+                        }).collect(Collectors.toList());
+                        String delParamSource = "{\"func_name\":\"ipgroup\",\"action\":\"del\",\"param\":{\"id\":\"%s\"}}\n";
+                        String delParam = String.format(delParamSource, String.join(",", ids));
+                        String delPost = HttpUtil.post(param.getIkuaiIp() + "/Action/call", delParam);
+
+                    }
                 }
 
                 addGroupIp.addAll(jsonObjects);
-                List<String> groupName = addGroupIp.stream().map(item -> item.getJSONObject("param").getString("group_name")).collect(Collectors.toList());
+                List<String> groupName = jsonObjects.stream().map(item -> item.getJSONObject("param").getString("group_name")).collect(Collectors.toList());
                 for (JSONObject object : addGroupIp) {
                     try {
                         String add = HttpUtil.post(param.getIkuaiIp() + "/Action/call", object.toJSONString());
@@ -148,10 +177,17 @@ public class RouterServiceImpl implements RouterService {
                     JSONArray dataArray = jsonObject2.getJSONObject("Data").getJSONArray("data");
                     if (CollectionUtil.isNotEmpty(dataArray)) {
                         List<JSONObject> dstNatList = dataArray.toJavaList(JSONObject.class);
-                        if (CollectionUtil.isNotEmpty(param.getDstNatIds())){
+                        if (CollectionUtil.isNotEmpty(param.getDstNatIds())) {
                             //筛选是否选择了端口映射列表
                             dstNatList = dstNatList.stream().filter(item -> param.getDstNatIds().contains(item.getString("id"))).collect(Collectors.toList());
                         }
+                        //为了将已有的配置保留
+                        List<JSONObject> collect1 = dstNatList.stream().filter(item -> item.getString("src_addr").contains("国内") && !item.isEmpty()).collect(Collectors.toList());
+                        List<JSONObject> collect2 = dstNatList.stream().filter(item -> item.isEmpty() || !item.getString("src_addr").contains("国内")).collect(Collectors.toList());
+                        collect1.addAll(collect2);
+                        dstNatList = collect1;
+
+                        //循环拼接插入数据
                         for (int i = 0; i < dstNatList.size(); i++) {
                             JSONObject jsonObject3 = dataArray.getJSONObject(i);
                             String join = String.join(",", groupName);
@@ -221,7 +257,17 @@ public class RouterServiceImpl implements RouterService {
         StringBuilder stringBuilder = new StringBuilder();
         for (String url : urlList) {
             // 使用 Hutool HttpUtil 获取内容
-            HttpResponse response = HttpRequest.get(url).execute();
+            HttpResponse response = null;
+
+            try {
+                try {
+                    response = HttpRequest.get(url).execute();
+                } catch (Exception e) {
+                    response = HttpRequest.get(url).execute();
+                }
+            } catch (Exception e) {
+                log.info("请求获取国内ip的地址" + url + "失败");
+            }
             if (!response.isOk()) {
                 continue;
             }
@@ -229,7 +275,7 @@ public class RouterServiceImpl implements RouterService {
             stringBuilder.append(content);
         }
         if (StringUtils.isEmpty(stringBuilder.toString())) {
-            throw new Exception("获取ip失败");
+            throw new Exception("获取ip失败,结果是空");
         }
         String[] split = stringBuilder.toString().split("\n");
         return Arrays.stream(split).distinct().sorted().collect(Collectors.toList());
@@ -278,7 +324,7 @@ public class RouterServiceImpl implements RouterService {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("获取文件ip失败");
+            throw new RuntimeException(e.getMessage());
         }
         log.info("-----------------------获取新的国内ip并生成文件成功----------------");
         return jsonObjectList;

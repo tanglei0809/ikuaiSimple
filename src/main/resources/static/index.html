@@ -377,12 +377,22 @@
 
             <!-- 是否立即执行选项 -->
             <div class="form-group">
-                <label class="text-sm font-medium text-gray-700 flex items-center cursor-pointer">
-                    <input type="checkbox" id="isExecute"
-                           class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mr-2" checked>
-                    立即执行白名单操作
-                    <span class="text-neutral text-xs ml-2">(勾选后提交即执行，取消则仅保存配置，系统每3天自动更新一次)</span>
-                </label>
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-gray-700 flex items-center cursor-pointer">
+                        <input type="checkbox" id="isExecute"
+                               class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mr-2" checked>
+                        立即执行白名单操作
+                    </label>
+                    <label class="text-sm font-medium text-gray-700 flex items-center cursor-pointer">
+                        <input type="checkbox" id="deleteFlag" checked
+                               class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mr-2">
+                        删除原有分组
+                    </label>
+                </div>
+                <div class="text-neutral text-xs mt-1">
+                    <p>提示：勾选立即执行后提交即执行，取消则仅保存配置，系统每3天自动更新一次</p>
+                    <p>提示：勾选删除原有分组后将删除原有白名单分组，仅保留本次配置的IP地址</p>
+                </div>
             </div>
 
             <!-- 提交/重置按钮 -->
@@ -553,6 +563,7 @@
         loader: document.querySelector('.loader'),
         errorRouterType: document.getElementById('errorRouterType'),
         isExecute: document.getElementById('isExecute'),
+        deleteFlag: document.getElementById('deleteFlag'),
         // 新增：端口映射相关元素
         dstNatListSection: document.getElementById('dstNatListSection'),
         getDstNatListBtn: document.getElementById('getDstNatListBtn'),
@@ -747,6 +758,11 @@
         // 回显是否立即执行的勾选状态
         if (echoData.isExecute !== undefined) {
             elements.isExecute.checked = echoData.isExecute;
+        }
+
+        // 回显是否删除原有分组的勾选状态
+        if (echoData.deleteFlag !== undefined) {
+            elements.deleteFlag.checked = echoData.deleteFlag;
         }
 
         // 检查是否已填写必要信息，如果是则显示端口映射列表区域
@@ -1205,6 +1221,7 @@
         const submitData = {
             routerType: type,
             isExecute: isExecute,
+            deleteFlag: elements.deleteFlag.checked, // 新增：是否删除原有分组
             dstNatIds: Array.from(selectedDstNatIds), // 新增：选中的端口映射ID集合
             ...Object.fromEntries(
                 (CONFIG.FORM_FIELDS[type] || []).map(field => {
@@ -1328,6 +1345,7 @@
         elements.result.classList.add('hidden');
         elements.errorRouterType.classList.add('hidden');
         elements.routerType.value = 'ikuai';
+        elements.deleteFlag.checked = false; // 重置删除原有分组选项
 
         // 清空选中的端口映射ID
         selectedDstNatIds.clear();
