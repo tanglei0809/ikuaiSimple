@@ -49,7 +49,7 @@ public class IkuaiController {
 
     @PostMapping("/updateDstNatList")
     public ResponseEntity updateDstNatList(@RequestBody List<UpdateParam> params) {
-        return ResponseEntity.ok(routerService.updateDstNatList(params));
+        return Result.ok(routerService.updateDstNatList(params));
     }
 
 
@@ -59,7 +59,7 @@ public class IkuaiController {
         if (!param.getIkuaiIp().contains("http")) {
             param.setIkuaiIp("http://" + param.getIkuaiIp());
         }
-            return ResponseEntity.ok(routerService.getDstNatList(param));
+            return Result.ok(routerService.getDstNatList(param));
     }
 
     @PostMapping("/submitDynamicForm")
@@ -72,7 +72,7 @@ public class IkuaiController {
         FileUtil.writeUtf8String(jsonString, projectPath);
         //是否立即执行
         if (param.getIsExecute()) {
-            return ResponseEntity.ok(routerService.submitDynamicForm(param));
+            return Result.ok(routerService.submitDynamicForm(param));
         }
 
         return Result.ok(param);
