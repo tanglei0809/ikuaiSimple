@@ -4,14 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>动态表单 - 路由器白名单IP管理</title>
-    <!-- 引入Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入Font Awesome图标 -->
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-    <!-- 适配Referrer策略，解决动态地址跨域问题 -->
     <meta name="referrer" content="origin">
 
-    <!-- 自定义Tailwind配置 -->
     <script>
         tailwind.config = {
             theme: {
@@ -27,7 +23,6 @@
         }
     </script>
 
-    <!-- 自定义工具类 -->
     <style type="text/tailwindcss">
         @layer utilities {
             .input-focus {
@@ -109,7 +104,7 @@
         .dst-nat-list {
             border: 1px solid #e5e7eb;
             border-radius: 0.5rem;
-            overflow: hidden;
+            overflow: visible !important;
         }
 
         .dst-nat-item {
@@ -137,6 +132,35 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+
+        /* 优化分组下拉框样式 */
+        .dst-nat-group-dropdown {
+            font-size: 13px !important;
+            padding: 3px 6px !important;
+            min-height: 28px;
+        }
+
+        .dst-nat-selected-text {
+            font-size: 13px !important;
+            max-width: 180px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dst-nat-dropdown-menu {
+            font-size: 13px !important;
+            z-index: 9999 !important;
+            position: absolute !important;
+            max-height: 200px !important;
+            min-width: 100% !important;
+            left: 0 !important;
+            top: 100% !important;
+        }
+
+        .dst-nat-dropdown-menu label {
+            font-size: 13px !important;
         }
 
         .dst-nat-lan-addr {
@@ -246,9 +270,14 @@
     </div>
 </header>
 
-<!-- 主体布局 -->
+<div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 hidden transition-all duration-300 ease-in-out">
+    <div class="flex items-center px-4 py-3 rounded-lg shadow-lg max-w-sm w-full">
+        <div id="toastIcon" class="mr-3 text-lg"></div>
+        <div id="toastMessage" class="text-sm font-medium flex-1"></div>
+    </div>
+</div>
+
 <main class="max-w-7xl mx-auto px-4 py-8 flex flex-col md:flex-row items-start gap-6">
-    <!-- 左侧使用说明面板 -->
     <div class="md:w-64 shrink-0 bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-300 h-fit">
         <h3 class="text-md font-semibold mb-4 pb-2 border-b border-gray-100 flex items-center">
             <i class="fa fa-info-circle text-primary mr-2"></i>使用说明
@@ -297,13 +326,10 @@
         </ul>
     </div>
 
-    <!-- 右侧表单区域 -->
     <div class="flex-1 max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-300">
         <h2 class="text-lg font-semibold mb-6 pb-2 border-b border-gray-100">选择类型并提交数据</h2>
 
-        <!-- 核心表单 -->
         <form id="dynamicForm" class="space-y-6">
-            <!-- 路由器类型选择 -->
             <div class="form-group">
                 <label for="routerType" class="text-sm font-medium text-gray-700">
                     路由器类型 <span class="text-error">*</span>
@@ -315,15 +341,12 @@
                 <p class="hidden text-error text-xs mt-1" id="errorRouterType">请选择路由器类型</p>
             </div>
 
-            <!-- 动态输入区域 -->
             <div id="formFields" class="border rounded-lg p-4 bg-gray-50 min-h-[200px]">
-                <!-- 自动渲染ikuai输入框 -->
                 <div class="echo-loading">
                     <i class="fa fa-spinner fa-spin mr-1"></i> 加载历史配置中...
                 </div>
             </div>
 
-            <!-- 端口映射列表区域 -->
             <div id="dstNatListSection" class="hidden border rounded-lg p-4 bg-gray-50">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-md font-semibold">端口映射列表</h3>
@@ -335,39 +358,44 @@
                     </button>
                 </div>
 
-                <!-- 端口映射列表容器 -->
                 <div id="dstNatListContainer" class="hidden">
-                    <!-- 选中数量统计 -->
                     <div id="dstNatSummary" class="dst-nat-summary hidden">
-                        <div>
-                            <span>已选择 <span id="selectedCount">0</span> 项</span>
-                            <p class="text-xs text-gray-500 mt-1">提示：选中则只执行选中的数据，默认不选执行所有</p>
-                        </div>
-                        <div class="dst-nat-actions">
-                            <button type="button" id="toggleSelectAllBtn" class="btn-small bg-primary text-white">
-                                <i class="fa fa-check-square-o"></i>
-                                <span>全选</span>
-                            </button>
+                        <div class="flex items-start justify-between w-full">
+                            <div class="flex-1">
+                                <div class="flex items-center">
+                                    <button type="button" id="toggleSelectAllBtn" class="btn-small bg-primary text-white mr-3">
+                                        <i class="fa fa-check-square-o"></i>
+                                        <span>全选</span>
+                                    </button>
+                                    <span>已选择 <span id="selectedCount">0</span> 项</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1 max-w-[240px] leading-relaxed">提示：选中则只执行选中的数据，默认不选执行所有</p>
+                            </div>
+                            <div class="dst-nat-actions">
+                                <div class="text-right">
+                                    <button type="button" id="batchUpdateGroupsBtn" class="btn-small bg-green-600 text-white">
+                                        <i class="fa fa-save"></i>
+                                        <span>批量设置分组</span>
+                                        <div class="hidden ml-1 loader w-3 h-3 border-2 border-white border-t-transparent rounded-full"></div>
+                                    </button>
+                                    <p class="text-xs text-gray-500 mt-1 max-w-[240px] leading-relaxed">独立功能,实时修改端口映射选中的允许访问ip分组</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- 分组列表 -->
                     <div id="dstNatGroups" class="space-y-2">
-                        <!-- 动态生成的分组内容 -->
                     </div>
 
-                    <!-- 加载状态 -->
                     <div id="dstNatLoading" class="echo-loading hidden">
                         <i class="fa fa-spinner fa-spin mr-1"></i> 获取端口映射列表中...
                     </div>
 
-                    <!-- 空状态 -->
                     <div id="dstNatEmpty" class="text-center py-8 text-gray-500 hidden">
                         <i class="fa fa-inbox fa-3x mb-2"></i>
                         <p>暂无端口映射规则</p>
                     </div>
 
-                    <!-- 错误状态 -->
                     <div id="dstNatError" class="text-center py-8 text-error hidden">
                         <i class="fa fa-exclamation-circle fa-3x mb-2"></i>
                         <p id="dstNatErrorMessage">获取端口映射列表失败</p>
@@ -375,7 +403,6 @@
                 </div>
             </div>
 
-            <!-- 是否立即执行选项 -->
             <div class="form-group">
                 <div class="flex items-center justify-between">
                     <label class="text-sm font-medium text-gray-700 flex items-center cursor-pointer">
@@ -395,7 +422,6 @@
                 </div>
             </div>
 
-            <!-- 提交/重置按钮 -->
             <div class="flex gap-3 mb-4">
                 <button type="submit" id="submitBtn"
                         class="flex-1 bg-primary text-white font-medium py-2.5 px-6 rounded-lg btn-hover flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none">
@@ -410,12 +436,9 @@
                 </button>
             </div>
 
-            <!-- 隐藏的文件输入框 -->
             <input type="file" id="fileInput" accept=".json,.txt" class="hidden">
 
-            <!-- 结果提示 -->
-            <div id="result"
-                 class="hidden py-3 px-4 rounded-lg text-sm flex items-center transition-all duration-300"></div>
+
         </form>
     </div>
 </main>
@@ -451,6 +474,7 @@
         API_URL: `${getApiBaseUrl()}/api/ikuai/submitDynamicForm`,
         ECHO_API_URL: `${getApiBaseUrl()}/api/ikuai/echo`, // echo接口地址
         DST_NAT_LIST_API_URL: `${getApiBaseUrl()}/api/ikuai/getDstNatList`, // 新增：获取端口映射列表接口
+        UPDATE_DST_NAT_LIST_API_URL: `${getApiBaseUrl()}/api/ikuai/updateDstNatList`, // 新增：批量更新端口映射分组接口
         UPLOAD_API_URL: `${getApiBaseUrl()}/api/ikuai/upload`, // 新增：上传配置接口
         DOWNLOAD_API_URL: `${getApiBaseUrl()}/api/ikuai/download`, // 新增：下载配置接口
         FORM_FIELDS: {
@@ -571,6 +595,7 @@
         dstNatSummary: document.getElementById('dstNatSummary'),
         selectedCount: document.getElementById('selectedCount'),
         toggleSelectAllBtn: document.getElementById('toggleSelectAllBtn'),
+        batchUpdateGroupsBtn: document.getElementById('batchUpdateGroupsBtn'),
         dstNatGroups: document.getElementById('dstNatGroups'),
         dstNatLoading: document.getElementById('dstNatLoading'),
         dstNatEmpty: document.getElementById('dstNatEmpty'),
@@ -582,6 +607,10 @@
     let selectedDstNatIds = new Set();
     // 存储所有端口映射数据
     let dstNatData = [];
+    // 存储所有分组数据
+    let allGroups = [];
+    // 存储每个端口映射项的分组选择状态
+    let dstNatGroupSelections = new Map();
 
     /**
      * 切换密码显示/隐藏状态
@@ -618,20 +647,51 @@
     };
 
     /**
-     * 显示结果提示
+     * 显示顶部弹窗提示
      * @param {boolean} isSuccess - 是否成功
      * @param {string} message - 提示信息
      */
     const showResult = (isSuccess, message) => {
-        elements.result.classList.remove('hidden');
-        elements.result.className = `py-3 px-4 rounded-lg text-sm flex items-center transition-all duration-300 ${
-            isSuccess ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
+        const toast = document.getElementById('toast');
+        const toastIcon = document.getElementById('toastIcon');
+        const toastMessage = document.getElementById('toastMessage');
+
+        if (!toast || !toastIcon || !toastMessage) return;
+
+        // 设置图标和消息
+        toastIcon.className = `mr-3 text-lg ${isSuccess ? 'text-green-500' : 'text-red-500'}`;
+        toastIcon.innerHTML = `<i class="fa ${isSuccess ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>`;
+        toastMessage.textContent = message;
+
+        // 设置背景色
+        const toastContent = toast.querySelector('div');
+        toastContent.className = `flex items-center px-4 py-3 rounded-lg shadow-lg max-w-sm w-full transition-all duration-300 ${
+            isSuccess ? 'bg-white border-l-4 border-green-500' : 'bg-white border-l-4 border-red-500'
         }`;
-        elements.result.innerHTML = `<i class="fa ${isSuccess ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+
+        // 显示弹窗
+        toast.classList.remove('hidden');
+        toast.classList.add('opacity-0', 'translate-y-[-20px]');
+
+        // 触发动画
+        setTimeout(() => {
+            toast.classList.remove('opacity-0', 'translate-y-[-20px]');
+            toast.classList.add('opacity-100', 'translate-y-0');
+        }, 10);
 
         // 使用clearTimeout防止多次触发
         if (showResult.timer) clearTimeout(showResult.timer);
-        showResult.timer = setTimeout(() => elements.result.classList.add('hidden'), CONFIG.MESSAGE_DURATION);
+
+        // 自动隐藏
+        showResult.timer = setTimeout(() => {
+            toast.classList.remove('opacity-100', 'translate-y-0');
+            toast.classList.add('opacity-0', 'translate-y-[-20px]');
+
+            // 等待动画完成后完全隐藏
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 300);
+        }, CONFIG.MESSAGE_DURATION);
     };
 
     /**
@@ -1098,8 +1158,6 @@
         }
     };
 
-
-
     /**
      * 渲染端口映射列表
      * @param {Array} items - 端口映射数据数组
@@ -1111,6 +1169,31 @@
         elements.dstNatSummary.classList.remove('hidden');
         updateSelectedCount();
 
+        // 提取所有分组数据
+        allGroups = [];
+        items.forEach(item => {
+            if (item.groupNameAll && Array.isArray(item.groupNameAll)) {
+                item.groupNameAll.forEach(group => {
+                    if (!allGroups.includes(group)) {
+                        allGroups.push(group);
+                    }
+                });
+            }
+        });
+
+        // 排序分组名称
+        allGroups.sort();
+
+        // 初始化分组选择状态
+        dstNatGroupSelections.clear();
+        items.forEach(item => {
+            if (item.groupNameChoose && Array.isArray(item.groupNameChoose)) {
+                dstNatGroupSelections.set(item.id, new Set(item.groupNameChoose));
+            } else {
+                dstNatGroupSelections.set(item.id, new Set());
+            }
+        });
+
         // 创建列表容器
         const listElement = document.createElement('div');
         listElement.className = 'dst-nat-list';
@@ -1120,28 +1203,68 @@
             const itemElement = document.createElement('div');
             itemElement.className = 'dst-nat-item';
             itemElement.dataset.id = item.id;
-
-
-
-            // 构建src_addr显示内容，限制显示40个字符
-            const srcAddrContent = item.src_addr ?
-                `<div class="tooltip">
-                    <span class="dst-nat-src-addr">${item.src_addr.length > 40 ? item.src_addr.substring(0, 40) + '...' : item.src_addr}</span>
-                    <span class="tooltip-text">${item.src_addr}</span>
-                </div>` :
-                '<span class="text-gray-400 text-sm">无限制</span>';
+            itemElement.dataset.lanAddr = item.lan_addr || '';
 
             // lan_addr字段保持完整显示
             const lanAddrContent = item.lan_addr ?
                 `<span class="dst-nat-lan-addr">${item.lan_addr}</span>` :
                 '<span class="text-gray-400 text-sm">未知地址</span>';
 
+            // 创建分组选择区域
+            let groupsHtml = '';
+            if (allGroups.length > 0) {
+                // 获取当前项已选分组
+                const selectedGroups = dstNatGroupSelections.get(item.id) || new Set();
+                const selectedGroup = selectedGroups.size > 0 ? Array.from(selectedGroups)[0] : '';
+
+                groupsHtml = `
+                    <div class="relative">
+                        <button type="button" class="dst-nat-group-dropdown text-xs border border-gray-300 rounded px-2 py-1 w-full max-w-[200px] text-left flex justify-between items-center"
+                            data-id="${item.id}">
+                            <span class="dst-nat-selected-text truncate">${selectedGroups.size > 0 ? Array.from(selectedGroups).join(', ') : '请选择分组'}</span>
+                            <i class="fa fa-chevron-down text-xs ml-1"></i>
+                        </button>
+                        <div class="dst-nat-dropdown-menu hidden bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-y-auto">
+                            <!-- 新增全选选项 -->
+                            <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer block border-b border-gray-200">
+                                <input type="checkbox"
+                                    class="dst-nat-group-select-all w-3 h-3 mr-2"
+                                    data-id="${item.id}">
+                                <span class="font-medium text-primary">全选/取消全选</span>
+                            </label>
+                            ${allGroups.map(group => {
+                    // 检查当前分组是否在已选择的分组中
+                    const isSelected = selectedGroups.has(group);
+                    return `
+                                    <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer block">
+                                        <input type="checkbox"
+                                            class="dst-nat-group-checkbox w-3 h-3 mr-2"
+                                            data-id="${item.id}"
+                                            data-group="${group}"
+                                            ${isSelected ? 'checked' : ''}>
+                                        <span>${group}</span>
+                                    </label>
+                                `;
+                }).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                groupsHtml = '<div class="text-xs text-gray-500 mt-2">暂无可用分组</div>';
+            }
+
             itemElement.innerHTML = `
                 <input type="checkbox" class="dst-nat-checkbox" id="dst-nat-${item.id}" value="${item.id}">
-                <div class="dst-nat-info">
-                    ${lanAddrContent}
-                    <span class="mx-2 text-gray-400">→</span>
-                    ${srcAddrContent}
+                <div class="dst-nat-info flex-1">
+                    <div class="w-full">
+                        <div class="flex items-center w-full gap-16">
+                            <div class="min-w-[120px] pl-4">${lanAddrContent}</div>
+                            <div class="text-gray-400 text-sm flex-shrink-0">
+                                <i class="fa fa-long-arrow-right"></i>
+                            </div>
+                            <div class="text-right flex-1">${groupsHtml}</div>
+                        </div>
+                    </div>
                 </div>
             `;
 
@@ -1152,6 +1275,8 @@
 
         // 绑定复选框事件
         bindDstNatCheckboxEvents();
+        // 绑定分组复选框事件
+        bindDstNatGroupCheckboxEvents();
     };
 
     /**
@@ -1172,7 +1297,156 @@
         });
     };
 
+    /**
+     * 绑定分组下拉菜单事件
+     */
+    const bindDstNatGroupCheckboxEvents = () => {
+        // 为所有下拉按钮绑定点击事件
+        document.querySelectorAll('.dst-nat-group-dropdown').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // 切换当前下拉菜单
+                const dropdownMenu = button.nextElementSibling;
+                const isHidden = dropdownMenu.classList.contains('hidden');
 
+                // 关闭所有其他下拉菜单
+                document.querySelectorAll('.dst-nat-dropdown-menu').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+
+                // 如果之前是隐藏的，则显示
+                if (isHidden) {
+                    dropdownMenu.classList.remove('hidden');
+                }
+            });
+        });
+
+        // 为所有分组复选框绑定change事件
+        document.querySelectorAll('.dst-nat-group-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const id = e.target.dataset.id;
+                const group = e.target.dataset.group;
+
+                // 获取当前项的分组选择状态
+                let selectedGroups = dstNatGroupSelections.get(id);
+                if (!selectedGroups) {
+                    selectedGroups = new Set();
+                    dstNatGroupSelections.set(id, selectedGroups);
+                }
+
+                // 更新分组选择状态
+                if (e.target.checked) {
+                    selectedGroups.add(group);
+                } else {
+                    selectedGroups.delete(group);
+                }
+
+                // 【修改】只要用户与分组复选框有交互（无论是选择还是取消选择），就自动勾选前面的单选框
+                const mainCheckbox = document.getElementById(`dst-nat-${id}`);
+                if (mainCheckbox && !mainCheckbox.checked) {
+                    mainCheckbox.checked = true;
+                    selectedDstNatIds.add(id);
+                    updateSelectedCount();
+                }
+
+                // 更新全选复选框的状态
+                updateSelectAllCheckbox(id);
+
+                // 更新显示文本
+                updateSelectedText(id);
+            });
+        });
+
+        // 为全选复选框绑定change事件
+        document.querySelectorAll('.dst-nat-group-select-all').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const id = e.target.dataset.id;
+                const isChecked = e.target.checked;
+
+                // 获取当前项的所有分组复选框
+                const groupCheckboxes = document.querySelectorAll(`.dst-nat-group-checkbox[data-id="${id}"]`);
+
+                // 获取当前项的分组选择状态
+                let selectedGroups = dstNatGroupSelections.get(id);
+                if (!selectedGroups) {
+                    selectedGroups = new Set();
+                    dstNatGroupSelections.set(id, selectedGroups);
+                }
+
+                // 更新所有分组复选框的状态
+                groupCheckboxes.forEach(groupCheckbox => {
+                    groupCheckbox.checked = isChecked;
+                    const group = groupCheckbox.dataset.group;
+
+                    if (isChecked) {
+                        selectedGroups.add(group);
+                    } else {
+                        selectedGroups.delete(group);
+                    }
+                });
+
+                // 自动勾选前面的单选框
+                const mainCheckbox = document.getElementById(`dst-nat-${id}`);
+                if (mainCheckbox && !mainCheckbox.checked) {
+                    mainCheckbox.checked = true;
+                    selectedDstNatIds.add(id);
+                    updateSelectedCount();
+                }
+
+                // 更新显示文本
+                updateSelectedText(id);
+            });
+        });
+
+        // 更新全选复选框的状态
+        const updateSelectAllCheckbox = (id) => {
+            const selectAllCheckbox = document.querySelector(`.dst-nat-group-select-all[data-id="${id}"]`);
+            if (!selectAllCheckbox) return;
+
+            const groupCheckboxes = document.querySelectorAll(`.dst-nat-group-checkbox[data-id="${id}"]`);
+            const checkedCheckboxes = document.querySelectorAll(`.dst-nat-group-checkbox[data-id="${id}"]:checked`);
+
+            selectAllCheckbox.checked = groupCheckboxes.length > 0 && groupCheckboxes.length === checkedCheckboxes.length;
+            selectAllCheckbox.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < groupCheckboxes.length;
+        };
+
+        // 点击页面其他地方关闭下拉菜单
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.dst-nat-dropdown-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        });
+
+        // 阻止下拉菜单内部点击事件冒泡
+        document.querySelectorAll('.dst-nat-dropdown-menu').forEach(menu => {
+            menu.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        });
+    };
+
+    /**
+     * 更新选中文本显示
+     * @param {string} id - 端口映射项ID
+     */
+    const updateSelectedText = (id) => {
+        // 直接从DOM中获取当前选中的分组，确保与用户界面保持一致
+        const itemElement = document.querySelector(`.dst-nat-item[data-id="${id}"]`);
+        if (!itemElement) return;
+
+        const checkedBoxes = itemElement.querySelectorAll('.dst-nat-group-checkbox:checked');
+        const selectedGroups = Array.from(checkedBoxes).map(checkbox => checkbox.dataset.group);
+
+        const dropdownButton = itemElement.querySelector('.dst-nat-group-dropdown');
+        if (dropdownButton) {
+            const selectedTextElement = dropdownButton.querySelector('.dst-nat-selected-text');
+            if (selectedGroups.length > 0) {
+                selectedTextElement.textContent = `${selectedGroups.join(', ')} ✓`;
+            } else {
+                selectedTextElement.textContent = '请选择分组';
+            }
+        }
+    };
 
     /**
      * 更新选中数量显示
@@ -1182,7 +1456,7 @@
     };
 
     /**
-     * 处理表单提交
+     * 处理表单提交 - 已修改为直接传递整个表单的所有字段
      * @param {Event} e - 提交事件
      */
     const handleSubmit = async (e) => {
@@ -1217,51 +1491,84 @@
             return;
         }
 
-        // 构建提交数据
+        // 构建提交数据 - 直接传递整个表单的所有字段
         const submitData = {
             routerType: type,
             isExecute: isExecute,
-            deleteFlag: elements.deleteFlag.checked, // 新增：是否删除原有分组
-            dstNatIds: Array.from(selectedDstNatIds), // 新增：选中的端口映射ID集合
-            ...Object.fromEntries(
-                (CONFIG.FORM_FIELDS[type] || []).map(field => {
-                    const value = getFieldValue(field);
-                    // 特殊处理IP地址列表和URL列表
-                    if ((field.id === 'blockAddress' || field.id === 'getIpUrls') && value) {
-                        // 清理空行和首尾空格，确保每行一条
-                        let cleanedItems = value.split('\n')
-                            .map(item => item.trim())
-                            .filter(item => item.length > 0);
-
-                        // 检查是否有项目中包含逗号，如果有则分割处理
-                        const itemsWithCommas = cleanedItems.filter(item => item.includes(','));
-                        if (itemsWithCommas.length > 0) {
-                            // 处理包含逗号的项目
-                            const expandedItems = [];
-                            cleanedItems.forEach(item => {
-                                if (item.includes(',')) {
-                                    // 分割并清理每个项目
-                                    item.split(',').forEach(splitItem => {
-                                        const trimmed = splitItem.trim();
-                                        if (trimmed.length > 0) {
-                                            expandedItems.push(trimmed);
-                                        }
-                                    });
-                                } else {
-                                    expandedItems.push(item);
-                                }
-                            });
-                            cleanedItems = expandedItems;
-                        }
-
-                        // 对IP地址列表和URL列表都转换为数组格式以匹配后端API要求
-                        console.log(`${field.id === 'blockAddress' ? 'IP' : 'URL'}配置转换为数组格式:`, cleanedItems);
-                        return [field.id, cleanedItems]; // 返回数组格式
-                    }
-                    return [field.id, value];
-                })
-            )
+            deleteFlag: elements.deleteFlag.checked,
+            dstNatIds: Array.from(selectedDstNatIds), // 传递选中的端口映射ID
+            // 直接添加所有表单字段
+            userName: getFieldValue({id: 'userName'}),
+            password: getFieldValue({id: 'password'}),
+            ikuaiIp: getFieldValue({id: 'ikuaiIp'}),
+            blockAddress: getFieldValue({id: 'blockAddress'}),
+            getIpUrls: getFieldValue({id: 'getIpUrls'})
         };
+
+        // 特殊处理IP地址列表和URL列表，转换为数组格式
+        if (submitData.blockAddress) {
+            // 清理空行和首尾空格，确保每行一条
+            let cleanedItems = submitData.blockAddress.split('\n')
+                .map(item => item.trim())
+                .filter(item => item.length > 0);
+
+            // 检查是否有项目中包含逗号，如果有则分割处理
+            const itemsWithCommas = cleanedItems.filter(item => item.includes(','));
+            if (itemsWithCommas.length > 0) {
+                // 处理包含逗号的项目
+                const expandedItems = [];
+                cleanedItems.forEach(item => {
+                    if (item.includes(',')) {
+                        // 分割并清理每个项目
+                        item.split(',').forEach(splitItem => {
+                            const trimmed = splitItem.trim();
+                            if (trimmed.length > 0) {
+                                expandedItems.push(trimmed);
+                            }
+                        });
+                    } else {
+                        expandedItems.push(item);
+                    }
+                });
+                cleanedItems = expandedItems;
+            }
+
+            // 对IP地址列表转换为数组格式以匹配后端API要求
+            submitData.blockAddress = cleanedItems;
+            console.log('IP配置转换为数组格式:', submitData.blockAddress);
+        }
+
+        if (submitData.getIpUrls) {
+            // 清理空行和首尾空格，确保每行一条
+            let cleanedItems = submitData.getIpUrls.split('\n')
+                .map(item => item.trim())
+                .filter(item => item.length > 0);
+
+            // 检查是否有项目中包含逗号，如果有则分割处理
+            const itemsWithCommas = cleanedItems.filter(item => item.includes(','));
+            if (itemsWithCommas.length > 0) {
+                // 处理包含逗号的项目
+                const expandedItems = [];
+                cleanedItems.forEach(item => {
+                    if (item.includes(',')) {
+                        // 分割并清理每个项目
+                        item.split(',').forEach(splitItem => {
+                            const trimmed = splitItem.trim();
+                            if (trimmed.length > 0) {
+                                expandedItems.push(trimmed);
+                            }
+                        });
+                    } else {
+                        expandedItems.push(item);
+                    }
+                });
+                cleanedItems = expandedItems;
+            }
+
+            // 对URL列表转换为数组格式以匹配后端API要求
+            submitData.getIpUrls = cleanedItems;
+            console.log('URL配置转换为数组格式:', submitData.getIpUrls);
+        }
 
         // 仅开发环境打印提交数据
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -1273,7 +1580,6 @@
             elements.submitBtn.disabled = true;
             elements.submitBtn.querySelector('span').textContent = '提交中...';
             elements.loader.classList.remove('hidden');
-            elements.result.classList.add('hidden');
 
             // 调用API
             const controller = new AbortController();
@@ -1430,6 +1736,108 @@
     };
 
     /**
+     * 批量设置分组 - 已修改：直接读取DOM元素状态
+     */
+    const handleBatchUpdateGroups = async () => {
+        // 检查是否有选中的端口映射项
+        if (selectedDstNatIds.size === 0) {
+            showResult(false, '请先选择需要设置分组的端口映射项');
+            return;
+        }
+
+        // 构建更新数据
+        const updateData = [];
+
+        selectedDstNatIds.forEach(id => {
+            // 1. 获取该行对应的DOM元素
+            const itemElement = document.querySelector(`.dst-nat-item[data-id="${id}"]`);
+
+            if (itemElement) {
+                const lanAddr = itemElement.dataset.lanAddr;
+
+                // 2. 【核心修改】直接查询该行下拉框中所有状态为 checked 的复选框
+                // 这样无论数据是初始化的，还是用户手动修改的，只要页面上勾选了，就会被获取
+                const checkedBoxes = itemElement.querySelectorAll('.dst-nat-group-checkbox:checked');
+
+                // 3. 提取所有选中复选框的 group 值
+                const currentSelectedGroups = Array.from(checkedBoxes).map(checkbox => checkbox.dataset.group);
+
+                // 4. 组装数据
+                if (lanAddr) {
+                    updateData.push({
+                        id: id, // 增加id字段
+                        lan_addr: lanAddr,
+                        groupNames: currentSelectedGroups // 使用直接从界面读取的数据
+                    });
+                }
+            }
+        });
+
+        // 仅开发环境打印，用于调试确认数据是否正确
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.log('批量提交的分组数据(所见即所得):', updateData);
+        }
+
+        // 检查是否有有效的更新数据
+        if (updateData.length === 0) {
+            showResult(false, '未能获取到有效的数据，请刷新重试');
+            return;
+        }
+
+        // 显示加载状态
+        elements.batchUpdateGroupsBtn.disabled = true;
+        elements.batchUpdateGroupsBtn.querySelector('span').textContent = '设置中...';
+        elements.batchUpdateGroupsBtn.querySelector('.loader').classList.remove('hidden');
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
+
+            // 调用API
+            const response = await fetch(CONFIG.UPDATE_DST_NAT_LIST_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(updateData),
+                signal: controller.signal,
+                credentials: 'include'
+            });
+
+            clearTimeout(timeoutId);
+
+            // 解析ResponseEntity格式响应
+            const parsedData = await parseResponseEntity(response);
+
+            // 显示结果
+            if (parsedData.success) {
+                showResult(true, `成功设置 ${updateData.length} 个端口映射项的分组`);
+                // 重新获取端口映射列表以更新显示
+                await fetchDstNatList();
+            } else {
+                showResult(false, parsedData.message || '设置分组失败');
+            }
+        } catch (err) {
+            let errorMsg = '';
+            if (err.name === 'AbortError') {
+                errorMsg = '请求超时，请检查网络';
+            } else if (err.message.includes('Failed to fetch')) {
+                errorMsg = '接口访问失败，请检查后端服务是否启动或地址是否正确';
+            } else {
+                errorMsg = `设置分组失败：${err.message}`;
+            }
+            showResult(false, errorMsg);
+            console.error('批量设置分组失败：', err);
+        } finally {
+            // 恢复按钮状态
+            elements.batchUpdateGroupsBtn.disabled = false;
+            elements.batchUpdateGroupsBtn.querySelector('span').textContent = '批量设置分组';
+            elements.batchUpdateGroupsBtn.querySelector('.loader').classList.add('hidden');
+        }
+    };
+
+    /**
      * 处理配置下载
      */
     const handleDownload = async () => {
@@ -1551,6 +1959,7 @@
         // 新增：绑定端口映射相关事件
         elements.getDstNatListBtn.addEventListener('click', fetchDstNatList);
         elements.toggleSelectAllBtn.addEventListener('click', toggleSelectAllDstNat);
+        elements.batchUpdateGroupsBtn.addEventListener('click', handleBatchUpdateGroups);
 
         // 监听表单字段变化，检查是否显示端口映射列表区域
         document.addEventListener('input', debounce((e) => {

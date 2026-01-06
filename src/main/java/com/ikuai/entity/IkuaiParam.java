@@ -34,9 +34,10 @@ public class IkuaiParam {
     //"请求获取ip的地址集合")
     private List<String> getIpUrls;
 
-    //"请求获取ip的地址集合")
+    //"端口映射列表id")
     private List<String> dstNatIds;
 
     //"是否删除旧分组配置")
     private boolean deleteFlag = true;
+
 }

@@ -4,6 +4,7 @@ package com.ikuai.service;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
@@ -11,6 +12,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.ikuai.entity.IkuaiParam;
+import com.ikuai.entity.UpdateParam;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -30,6 +32,8 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class RouterServiceImpl implements RouterService {
+
+    private static final String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
 
     @Override
     public Object submitDynamicForm(IkuaiParam param) {
@@ -65,8 +69,8 @@ public class RouterServiceImpl implements RouterService {
                                 JSONObject dstNat = dstNatListArray.getJSONObject(i);
                                 dstNat.put("groupNameAll", groupNameAll);
                                 String src_addr = dstNat.getString("src_addr");
-                                if (StringUtils.isNotEmpty(src_addr)){
-                                    dstNat.put("groupNameChoose", src_addr.split( ","));
+                                if (StringUtils.isNotEmpty(src_addr)) {
+                                    dstNat.put("groupNameChoose", src_addr.split(","));
                                 }
                             }
                         }
@@ -80,10 +84,50 @@ public class RouterServiceImpl implements RouterService {
         return null;
     }
 
+    @Override
+    public Object updateDstNatList(List<UpdateParam> params) {
+        List<JSONObject> updateList = new ArrayList<>();
+        if (CollectionUtil.isNotEmpty(params)) {
+            String s = FileUtil.readUtf8String(projectPath);
+            IkuaiParam param = JSON.parseObject(s, IkuaiParam.class);
+            boolean b = loginIkuai(param);
+            if (!b) {
+                return "登录失败";
+            }
+            //获取端口映射列表
+            String dnat = HttpUtil.post(param.getIkuaiIp() + "/Action/call", "{\"func_name\":\"dnat\",\"action\":\"show\",\"param\":{\"TYPE\":\"total,data\",\"limit\":\"0,100\",\"ORDER_BY\":\"\",\"ORDER\":\"\"}}");
+            JSONObject jsonObject2 = JSON.parseObject(dnat);
+            Integer result1 = jsonObject2.getInteger("Result");
+            String errMsg1 = jsonObject2.getString("ErrMsg");
+            if (result1 == 30000 && errMsg1.equals("Success")) {
+                JSONArray dstNatListArray = jsonObject2.getJSONObject("Data").getJSONArray("data");
+                if (CollectionUtil.isNotEmpty(dstNatListArray)) {
+                    Map<String, JSONObject> dstNatMap = dstNatListArray.toJavaList(JSONObject.class).stream().collect(Collectors.toMap(item -> item.getString("id"), item -> item));
+                    for (UpdateParam updateParam : params) {
+                        JSONObject jsonObject = dstNatMap.get(updateParam.getId());
+                        if (ObjectUtil.isNotEmpty(jsonObject)) {
+                            jsonObject.put("src_addr", String.join(",", updateParam.getGroupNames()));
+                            JSONObject requestObj = new JSONObject();
+                            requestObj.put("func_name", "dnat");
+                            requestObj.put("action", "edit");
+                            requestObj.put("param", jsonObject);
+                            String response = HttpUtil.post(param.getIkuaiIp() + "/Action/call", requestObj.toJSONString());
+                            log.info("更新结果:" + response);
+                            updateList.add(jsonObject);
+                        }
+
+                    }
+
+                }
+            }
+        }
+        return updateList;
+    }
+
+
     @Scheduled(cron = "0 0 3 */3 * ?")
     public void taskUpdate() {
         //读取写入本地的配置
-        String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
         boolean exist = FileUtil.exist(projectPath);
         //文件是否存在
         if (exist) {
@@ -240,7 +284,6 @@ public class RouterServiceImpl implements RouterService {
         List<String> urlList;
 
         //读取写入本地的配置
-        String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
         boolean exist = FileUtil.exist(projectPath);
         if (exist) {
             String s = FileUtil.readUtf8String(projectPath);

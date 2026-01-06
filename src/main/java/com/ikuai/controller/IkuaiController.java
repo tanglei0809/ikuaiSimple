@@ -12,6 +12,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.ikuai.entity.IkuaiParam;
+import com.ikuai.entity.UpdateParam;
 import com.ikuai.result.Result;
 import com.ikuai.service.RouterService;
 import org.apache.commons.lang3.StringUtils;
@@ -44,6 +45,14 @@ public class IkuaiController {
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("json");
 
     private static final String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
+
+
+    @PostMapping("/updateDstNatList")
+    public ResponseEntity updateDstNatList(@RequestBody List<UpdateParam> params) {
+        return ResponseEntity.ok(routerService.updateDstNatList(params));
+    }
+
+
 
     @PostMapping("/getDstNatList")
     public ResponseEntity getDstNatList(@RequestBody IkuaiParam param) {

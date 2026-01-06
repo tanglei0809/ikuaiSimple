@@ -14,16 +14,16 @@
 
 
 {
-  "lan_addr_int": 3232261122,
-  "id": 1,
-  "enabled": "yes",
-  "comment": "",
-  "interface": "wan1",
-  "src_addr": "国内ip1,国内ip2,国内ip3,国内ip4,国内ip5,国内ip6,国内ip7,国内ip8,国内ip9",
-  "lan_addr": "192.168.100.2",
-  "protocol": "tcp",
-  "wan_port": "40080",
-  "lan_port": "80"
+  "lan_addr_int" : 3232261122,
+  "id" : 1,
+  "enabled" : "yes",
+  "comment" : "",
+  "interface" : "wan1,wan2",
+  "src_addr" : "wan地址,四川,国内ip-20260105-1,国内ip-20260105-2,国内ip-20260105-3,国内ip-20260105-4,国内ip-20260105-5,国内ip-20260105-6,国内ip-20260105-7,国内ip-20260105-8,国内ip-20260105-9,国内ip-20260105-10,国内ip-20260105-11,国内ip-20260105-12",
+  "lan_addr" : "192.168.100.2",
+  "protocol" : "tcp",
+  "wan_port" : "40080,3200",
+  "lan_port" : "80,3200"
 }
 
 {
