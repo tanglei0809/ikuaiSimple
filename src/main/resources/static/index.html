@@ -1235,9 +1235,11 @@
                             ${allGroups.map(group => {
                     // 检查当前分组是否在已选择的分组中
                     const isSelected = selectedGroups.has(group);
+                    const safeGroupId = `group-${item.id}-${group.replace(/[^a-zA-Z0-9]/g, '-')}`;
                     return `
                                     <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer block">
                                         <input type="checkbox"
+                                            id="${safeGroupId}"
                                             class="dst-nat-group-checkbox w-3 h-3 mr-2"
                                             data-id="${item.id}"
                                             data-group="${group}"
@@ -1271,6 +1273,8 @@
             listElement.appendChild(itemElement);
         });
 
+        // 先清空容器，避免重复添加
+        elements.dstNatGroups.innerHTML = '';
         elements.dstNatGroups.appendChild(listElement);
 
         // 绑定复选框事件
