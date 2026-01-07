@@ -15,6 +15,7 @@ import com.ikuai.entity.IkuaiParam;
 import com.ikuai.entity.UpdateParam;
 import com.ikuai.result.Result;
 import com.ikuai.service.RouterService;
+import com.ikuai.util.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,7 +45,7 @@ public class IkuaiController {
     // 支持的文件扩展名
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("json");
 
-    private static final String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
+    private static final String projectPath = FileUtils.buildOsSpecificPath(null, "config", "ikuai.json");
 
 
     @PostMapping("/updateDstNatList")

@@ -13,6 +13,7 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.ikuai.entity.IkuaiParam;
 import com.ikuai.entity.UpdateParam;
+import com.ikuai.util.FileUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -33,7 +34,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RouterServiceImpl implements RouterService {
 
-    private static final String projectPath = System.getProperty("user.dir") + File.separator + "ikuai.json";
+    private static final String projectPath = FileUtils.buildOsSpecificPath(null, "config", "ikuai.json");
 
     @Override
     public Object submitDynamicForm(IkuaiParam param) {
