@@ -47,22 +47,38 @@ public class IkuaiController {
 
     private static final String projectPath = FileUtils.buildOsSpecificPath(null, "config", "ikuai.json");
 
-
+    /**
+     * 实时更新端口映射地址
+     *
+     * @param params
+     * @return
+     */
     @PostMapping("/updateDstNatList")
     public ResponseEntity updateDstNatList(@RequestBody List<UpdateParam> params) {
         return Result.ok(routerService.updateDstNatList(params));
     }
 
 
-
+    /**
+     * 获取端口映射列表
+     *
+     * @param param
+     * @return
+     */
     @PostMapping("/getDstNatList")
     public ResponseEntity getDstNatList(@RequestBody IkuaiParam param) {
         if (!param.getIkuaiIp().contains("http")) {
             param.setIkuaiIp("http://" + param.getIkuaiIp());
         }
-            return Result.ok(routerService.getDstNatList(param));
+        return Result.ok(routerService.getDstNatList(param));
     }
 
+    /**
+     * 提交动态表单
+     *
+     * @param param
+     * @return
+     */
     @PostMapping("/submitDynamicForm")
     public ResponseEntity submitDynamicForm(@RequestBody IkuaiParam param) {
         if (!param.getIkuaiIp().contains("http")) {
@@ -80,8 +96,11 @@ public class IkuaiController {
     }
 
 
-
-
+    /**
+     * 配置回显
+     *
+     * @return
+     */
     @GetMapping("/echo")
     public ResponseEntity echo() {
         String s = null;
@@ -101,6 +120,13 @@ public class IkuaiController {
         return Result.ok(jsonObject);
     }
 
+    /**
+     * 上传配置
+     *
+     * @param file
+     * @return
+     * @throws IOException
+     */
     @PostMapping("/upload")
     public ResponseEntity upload(@RequestParam("file") MultipartFile file) throws IOException {
 
@@ -116,7 +142,7 @@ public class IkuaiController {
                 return Result.fail("文件名不能为空");
             }
 
-            String extension = getFileExtension(originalFilename).toLowerCase();
+            String extension = FileUtils.getFileExtension(originalFilename).toLowerCase();
             if (!ALLOWED_EXTENSIONS.contains(extension)) {
                 return Result.fail("只支持 .json 和 .txt 文件格式");
             }
@@ -135,7 +161,11 @@ public class IkuaiController {
         return Result.ok("上传成功");
     }
 
-
+    /**
+     * 下载配置
+     *
+     * @param response
+     */
     @GetMapping("/download")
     public void download(HttpServletResponse response) {
         File file = FileUtil.file(projectPath);
@@ -146,19 +176,7 @@ public class IkuaiController {
         ServletUtil.write(response, file);
     }
 
-    /**
-     * 获取文件扩展名
-     *
-     * @param filename 文件名
-     * @return 扩展名
-     */
-    private String getFileExtension(String filename) {
-        int lastDotIndex = filename.lastIndexOf('.');
-        if (lastDotIndex > 0 && lastDotIndex < filename.length() - 1) {
-            return filename.substring(lastDotIndex + 1);
-        }
-        return "";
-    }
+
 
     public static void main(String[] args) {
         IkuaiParam ikuaiParam = new IkuaiParam();
