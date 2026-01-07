@@ -25,13 +25,37 @@ public class FileUtils {
             if (StringUtils.isEmpty(windowsPath)) {
                 windowsPath = System.getProperty("user.dir");
             }
-            return windowsPath + File.separator + fileName;
+            return ensureFileSeparator(windowsPath) + fileName;
         } else {
             // Linux/Unix路径
-            if (StringUtils.isEmpty(windowsPath)) {
-                linuxPath = File.separator + "root";
+            if (StringUtils.isEmpty(linuxPath)) {
+                linuxPath =ensureFileSeparator("root");
             }
-            return linuxPath + File.separator + fileName;
+            return ensureFileSeparator(linuxPath) + fileName;
         }
     }
+
+    /**
+     * 路径格式化
+     *
+     * @param path
+     * @return
+     */
+    public static String ensureFileSeparator(String path) {
+        // 获取系统的文件分隔符
+        String separator = File.separator;
+        // 替换所有斜杠和反斜杠为系统文件分隔符
+        path = path.replace("/", separator).replace("\\", separator);
+
+        // 检查路径前后是否有文件分隔符
+        if (!path.startsWith(separator)) {
+            path = separator + path; // 在前面添加文件分隔符
+        }
+        if (!path.endsWith(separator)) {
+            path = path + separator; // 在后面添加文件分隔符
+        }
+
+        return path;
+    }
+
 }
